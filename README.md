@@ -50,18 +50,22 @@ As of now, `tinygrad-homemade` supports:
 
 ## How to Use / Explore
 
-1.  **Clone the repository:**
+1. **Clone the repository:**
+
     ```bash
-    git clone <your-repo-url>
+    gh repo clone sakshambedi/tinygrad-homemade
     cd tinygrad-homemade
     ```
-2.  **Explore the code:**
+
+2. **Explore the code:**
     - Check out `grad/tensor.py` to see the `Tensor` implementation.
     - Run the tests using `pytest` in the root directory to see the operations in action:
+
       ```bash
       pytest
       ```
-3.  **Experiment:**
+
+3. **Experiment:**
     You can open a Python interpreter in the project's root directory and play with the `Tensor` class:
 
     ```python
