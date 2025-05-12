@@ -89,7 +89,7 @@ def floats_to_words(values: Iterable[float]) -> list[int]:
 
 
 # ---------- convenience pretty‑printer ----------
-def formatted_fp16_buffer(buf: memoryview) -> list[int]:
+def formatted_fp16_buffer(buf: memoryview) -> list[float]:
     """
     Expect a memoryview whose format is 'H' (uint16).
     Returns a comma‑separated string of fp16 numbers.
@@ -98,4 +98,3 @@ def formatted_fp16_buffer(buf: memoryview) -> list[int]:
         raise TypeError("buffer format must be 'H' for uint16 words")
     floats = words_to_floats(buf)
     return floats
-    # return ", ".join(f"{f:.5g}" for f in floats)

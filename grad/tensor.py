@@ -28,37 +28,28 @@ class Tensor:
         self.grad: Tensor | None = None
 
         if isinstance(data, (list, tuple)):
-            # infer shape and flatten data
             self.shape = self._infer_shape(data)
             flat = self._flatten(data)
-
             dtype_obj = self.dtype
 
             if dtype_obj.fmt is None:
                 raise TypeError(f"Unsupported dtype {dtype_obj.name} for Tensor data")
 
-            if dtype_obj.fmt == "e":
-                try:
-                    # Use little-endian format '<' for packing
-                    # We store the raw bytes and create a memoryview of bytes.
-                    # The interpretation will be handled in _buffer_to_nested.
+            try:
+                if dtype_obj.fmt in ("e", "?"):
+                    cast_fmt = "H" if dtype_obj.fmt == "e" else "b"
                     raw = bytearray(struct.pack(f"<{len(flat)}{dtype_obj.fmt}", *flat))
-                    self._raw = raw  # Store the bytearray
-                    self._buffer = memoryview(raw).cast("H")
-                except struct.error as e:
-                    # Catch potential errors during struct packing
-                    raise TypeError(f"Could not pack data with format '{dtype_obj.fmt}': {e}")
-            else:
-                try:
-                    # array.array expects a list of numbers. It handles basic type conversions.
+                    self._raw = raw
+                    self._buffer = memoryview(raw).cast(cast_fmt)
+                else:
                     arr = array.array(dtype_obj.fmt, flat)
                     self._raw = arr
                     self._buffer = memoryview(arr)
-                except TypeError as e:
-                    # Catch potential errors during array.array creation (e.g., invalid data for format)
-                    raise TypeError(
-                        f"Could not create array.array with format '{dtype_obj.fmt}': {e}"
-                    )
+
+            except struct.error as e:
+                raise TypeError(f"Could not pack data with format '{dtype_obj.fmt}': {e}")
+            except TypeError as e:
+                raise TypeError(f"Could not create buffer with format '{dtype_obj.fmt}': {e}")
 
         else:
             raise TypeError(f"Unsupported data type {type(data)} for Tensor initialization")
@@ -74,7 +65,17 @@ class Tensor:
     def _infer_shape(x):
         """Recursively walk nested lists or tuples to figure out the shape"""
         if isinstance(x, (list, tuple)):
-            return (len(x),) + Tensor._infer_shape(x[0]) if x else (0,)
+            if not x:
+                return (0,)
+            first_shape = Tensor._infer_shape(x[0])
+            for item in x[1:]:
+                if not isinstance(item, (list, tuple)) and first_shape:
+                    raise IndexError("Inconsistent tensor shape")
+                if isinstance(item, (list, tuple)) and len(item) != (
+                    first_shape[0] if first_shape else 0
+                ):
+                    raise IndexError("Inconsistent tensor shape")
+            return (len(x),) + first_shape
         return ()
 
     @staticmethod
@@ -139,6 +140,7 @@ class Tensor:
     def __repr__(self):
         # _buffer_to_nested will now handle the correct interpretation for fp16 fallback
         nested = self._buffer_to_nested()
+
         return (
             f"Tensor(shape={self.shape}, data={nested}, "
             f"device={self.device}, dtype={self.dtype.name}, "
