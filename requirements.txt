@@ -1,5 +1,3 @@
-numpy
-matplotlib
+
 pytest
 hypothesis
-ruff

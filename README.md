@@ -1,21 +1,23 @@
-# TinyGrad-Homemade: A Learning Journey into Deep Learning Frameworks
+# Petit-Grad: A Learning Journey into Deep Learning Frameworks
 
 This project is a personal exploration and implementation of a simplified tensor library, inspired by [tinygrad](https://github.com/geohot/tinygrad) and [PyTorch](https://pytorch.org/). The primary goal is to understand the fundamental concepts and mechanics behind modern deep learning frameworks by building one from scratch (or, at least, a significant portion of it!).
 
 ## What is this?
 
-`tinygrad-homemade` is a Python-based library that provides a `Tensor` object, similar to those found in NumPy, PyTorch, or TensorFlow. It aims to replicate some of the core functionalities, particularly focusing on automatic differentiation and tensor operations, to gain a deeper insight into their inner workings.
+`petit-grad` is a Python-based library that provides a `Tensor` object, similar to those found in NumPy, PyTorch, or TensorFlow. It aims to replicate some of the core functionalities, particularly focusing on automatic differentiation and tensor operations, to gain a deeper insight into their inner workings.
 
 This is an educational project. While the aim is to create functional components, it's not intended to be a production-ready deep learning library.
 
 ## Current Features
 
-As of now, `tinygrad-homemade` supports:
+As of now, `petit-grad` supports:
 
 - **Tensor Creation:**
-  - Creating tensors from Python lists or NumPy arrays.
-  - Specifying `dtype` (currently defaults to `np.float32`).
-  - Creating empty tensors with `Tensor.empty()`.
+  - Creating tensors from Python lists or tuples.
+  - Specifying `dtype` using the `dtypes` class (defaults to `dtypes.float32`). Supported dtypes include `float32`, `float16`, `int32`, `int8`, `bool`.
+  - Creating tensors filled with ones (`Tensor.ones()`).
+  - Creating tensors filled with zeros (`Tensor.zeros()`).
+  - _Note: Creating empty tensors (`Tensor.empty()`) is not currently supported in this version._
 - **Basic Mathematical Operations:**
   - Addition (`+`)
   - Multiplication (`*`)
@@ -24,9 +26,10 @@ As of now, `tinygrad-homemade` supports:
   - Floor Division (`//`)
 - **Operator Overloading:** These operations can be used directly with Python's arithmetic operators.
 - **Broadcasting:** Operations between tensors of different (but compatible) shapes are supported, following NumPy-like broadcasting rules.
-- **NumPy Interoperability:**
-  - Tensors store their data as NumPy arrays (`self.data`).
-  - Easy conversion to NumPy arrays using the `.numpy()` method.
+- **Internal Data Representation:**
+  - Tensors store their data internally using Python's `memoryview` backed by `array.array` or `bytearray`, not NumPy arrays. This helps understand lower-level data handling.
+- **Data Access:**
+  - Tensor data can be viewed as nested Python lists via the `__repr__` method for inspection.
 - **Reverse Operations:** Reverse versions of multiplication (`__rmul__`), true division (`__rtruediv__`), and floor division (`__rfloordiv__`) are implemented.
 - **Zero-Size Tensor Handling:** Operations involving tensors with zero-sized dimensions are handled, generally following NumPy's behavior (e.g., returning empty tensors or handling division by zero appropriately for true division).
 - **Division by Zero:**
@@ -52,45 +55,51 @@ As of now, `tinygrad-homemade` supports:
 
 1. **Clone the repository:**
 
-    ```bash
-    gh repo clone sakshambedi/tinygrad-homemade
-    cd tinygrad-homemade
-    ```
+   ```bash
+   gh repo clone sakshambedi/petit-grad
+   cd petit-grad
+   ```
 
 2. **Explore the code:**
-    - Check out `grad/tensor.py` to see the `Tensor` implementation.
-    - Run the tests using `pytest` in the root directory to see the operations in action:
 
-      ```bash
-      pytest
-      ```
+   - Check out `grad/tensor.py` to see the `Tensor` implementation.
+   - Run the tests using `pytest` in the root directory to see the operations in action:
+
+     ```bash
+     pytest
+     ```
 
 3. **Experiment:**
-    You can open a Python interpreter in the project's root directory and play with the `Tensor` class:
+   You can open a Python interpreter in the project's root directory and play with the `Tensor` class:
 
-    ```python
-    from grad.tensor import Tensor
-    import numpy as np
+   ```python
+   from grad.tensor import Tensor
+   from grad.dtype import dtypes
 
-    a = Tensor([1, 2, 3])
-    b = Tensor([4, 5, 6])
-    c = a + b
-    print(c.numpy()) # Output: [5. 7. 9.]
+   # Basic Tensor Creation and Operation
+   a = Tensor([1, 2, 3], dtype=dtypes.int32) # Specify dtype
+   b = Tensor([4, 5, 6], dtype=dtypes.int32)
+   c = a + b
+   print(c)
+   # Output: Tensor(shape=(3,), data=[5, 7, 9], device=cpu, dtype=int32, requires_grad=None)
 
-    d = Tensor([[1,2],[3,4]])
-    e = Tensor([10])
-    f = d * e # Broadcasting
-    print(f.numpy())
-    # Output:
-    # [[10. 20.]
-    #  [30. 40.]]
+   # Broadcasting example
+   d = Tensor([[1,2],[3,4]], dtype=dtypes.float32)
+   e = Tensor([10], dtype=dtypes.float32)
+   f = d * e # Broadcasting
+   print(f)
+   # Output:
+   # Tensor(shape=(2, 2), data=[[10.0, 20.0], [30.0, 40.0]], device=cpu, dtype=float32, requires_grad=None)
 
-    # Division by zero (true division)
-    t_arr = Tensor([1.0, 2.0, 3.0])
-    t_zero = Tensor([0.0])
-    # result = t_arr / t_zero # This would typically result in [inf, inf, inf] or similar
-    # print(result.numpy())
-    ```
+   # Using ones and zeros
+   ones_tensor = Tensor.ones((2, 3), dtype=dtypes.float16)
+   print(ones_tensor)
+   # Output: Tensor(shape=(2, 3), data=[[1.0, 1.0, 1.0], [1.0, 1.0, 1.0]], device=cpu, dtype=float16, requires_grad=None)
+
+   zeros_tensor = Tensor.zeros((2, 2)) # Defaults to float32
+   print(zeros_tensor)
+   # Output: Tensor(shape=(2, 2), data=[[0.0, 0.0], [0.0, 0.0]], device=cpu, dtype=float32, requires_grad=None)
+   ```
 
 ## Future Plans (Potential Learning Areas)
 

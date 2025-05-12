@@ -1,168 +1,187 @@
-# %%
-import numpy as np
-from numpy.typing import DTypeLike
+from __future__ import annotations
+
+import array
+import struct  # Import the struct module
+
+from grad.dtype import DType, DTypeLike, dtypes, to_dtype
+from grad.ops import UOp
+from grad.utils.fp16 import formatted_fp16_buffer
+
+__slots__ = ("lazydata", "requires_grad", "grad")  # reserved slots
+
+ARRAY_E_SUPPORTED = "e" in array.typecodes
 
 
 class Tensor:
+    """A `Tensor` is a multi-dimensional matrix containing elements of a single data type, backed by a memoryview."""
+
     def __init__(
         self,
-        data: list | np.ndarray | float,
-        dtype: DTypeLike = np.float32,
-        device: str | tuple | list = "cpu",
-        requires_grad: bool | None = None
+        data: list | tuple | UOp | None,
+        device: str | None = "cpu",
+        dtype: DTypeLike = dtypes.float32,
+        requires_grad: bool | None = None,
     ):
-        self.data = np.array(data, dtype=dtype)
-        self.dtype = self.data.dtype
-        self.device: str | tuple | list = device
+        self.dtype = to_dtype(dtype)
+        self.device = device
+        self.requires_grad = requires_grad
         self.grad: Tensor | None = None
-        self.requires_grad: bool | None = requires_grad
 
-    def realize(self):
-        return self
+        if isinstance(data, (list, tuple)):
+            # infer shape and flatten data
+            self.shape = self._infer_shape(data)
+            flat = self._flatten(data)
 
-    def numpy(self):
-        return self.data
+            dtype_obj = self.dtype
+
+            if dtype_obj.fmt is None:
+                raise TypeError(f"Unsupported dtype {dtype_obj.name} for Tensor data")
+
+            if dtype_obj.fmt == "e":
+                try:
+                    # Use little-endian format '<' for packing
+                    # We store the raw bytes and create a memoryview of bytes.
+                    # The interpretation will be handled in _buffer_to_nested.
+                    raw = bytearray(struct.pack(f"<{len(flat)}{dtype_obj.fmt}", *flat))
+                    self._raw = raw  # Store the bytearray
+                    self._buffer = memoryview(raw).cast("H")
+                except struct.error as e:
+                    # Catch potential errors during struct packing
+                    raise TypeError(f"Could not pack data with format '{dtype_obj.fmt}': {e}")
+            else:
+                try:
+                    # array.array expects a list of numbers. It handles basic type conversions.
+                    arr = array.array(dtype_obj.fmt, flat)
+                    self._raw = arr
+                    self._buffer = memoryview(arr)
+                except TypeError as e:
+                    # Catch potential errors during array.array creation (e.g., invalid data for format)
+                    raise TypeError(
+                        f"Could not create array.array with format '{dtype_obj.fmt}': {e}"
+                    )
+
+        else:
+            raise TypeError(f"Unsupported data type {type(data)} for Tensor initialization")
+
+    @staticmethod
+    def _flatten(x):
+        """Recursively flatten nested lists/tuples."""
+        if isinstance(x, (list, tuple)):
+            return [y for sub in x for y in Tensor._flatten(sub)]
+        return [x]
+
+    @staticmethod
+    def _infer_shape(x):
+        """Recursively walk nested lists or tuples to figure out the shape"""
+        if isinstance(x, (list, tuple)):
+            return (len(x),) + Tensor._infer_shape(x[0]) if x else (0,)
+        return ()
+
+    @staticmethod
+    def _nest(flat: list, dims: list[int]):
+        """Reconstruct nested lists from flat data according to dims."""
+        # print(f"dims : {dims}")
+        if not dims:
+            return flat.pop(0)
+        return [Tensor._nest(flat, dims[1:]) for _ in range(dims[0])]
+
+    def _buffer_to_nested(self):
+        """Convert flat buffer (memoryview) to nested lists according to shape."""
+
+        if self.dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
+            flat_data = formatted_fp16_buffer(self._buffer)
+        else:
+            flat_data = list(self._buffer)
+
+        return Tensor._nest(flat_data, list(self.shape))
 
     @classmethod
-    def empty(cls, *shape, **kwargs):
-        dtype = kwargs.get("dtype", np.float32)
-        device = kwargs.get("device", "cpu")
-        requires_grad = kwargs.get("requires_grad", False)
-        return cls(
-            np.empty(shape, dtype=dtype),
-            dtype=dtype,
-            device=device,
-            requires_grad=requires_grad,
+    def ones(cls, shape, dtype: DType = dtypes.fp32, device="cpu", requires_grad=None):
+        """Create a tensor filled with ones"""
+        size = 1
+        for dim in shape:
+            size *= dim
+        dtype_obj = to_dtype(dtype)
+
+        if dtype_obj.fmt is None:
+            raise TypeError(f"Unsupported dtype {dtype_obj.name} for Tensor data")
+
+        flat_data = [1] * size
+
+        t = cls.__new__(cls)
+        t.dtype = dtype_obj
+        t.device = device
+        t.requires_grad = requires_grad
+        t.grad = None
+        t.shape = tuple(shape)
+
+        try:
+            if dtype_obj.fmt == "e" and not ARRAY_E_SUPPORTED:
+                raw = bytearray(struct.pack(f"<{size}{dtype_obj.fmt}", *flat_data))
+                t._raw = raw
+                t._buffer = memoryview(raw).cast("H")  # unsigned short, 16‑bit
+            elif dtype_obj.fmt != "e":
+                raw = bytearray(struct.pack(f"<{size}{dtype_obj.fmt}", *flat_data))
+                t._raw = raw
+                t._buffer = memoryview(raw).cast(dtype_obj.fmt)
+            else:
+                arr = array.array(dtype_obj.fmt, flat_data)
+                t._raw = arr
+                t._buffer = memoryview(arr)
+            return t
+        except struct.error as e:
+            raise TypeError(f"Could not pack data with format '{dtype_obj.fmt}' for ones: {e}")
+        except TypeError as e:
+            raise TypeError(
+                f"Could not create array.array with format '{dtype_obj.fmt}' for ones: {e}"
+            )
+
+    def __repr__(self):
+        # _buffer_to_nested will now handle the correct interpretation for fp16 fallback
+        nested = self._buffer_to_nested()
+        return (
+            f"Tensor(shape={self.shape}, data={nested}, "
+            f"device={self.device}, dtype={self.dtype.name}, "
+            f"requires_grad={self.requires_grad})"
         )
 
-    def __repr__(self) -> str:
-        return f"Tensor(data={self.data}, dtype={self.dtype}, device={self.device})"
+    @classmethod
+    def zeros(cls, shape, dtype: DType = dtypes.fp32, device="cpu", requires_grad=None):
+        """Create a tensor filled with zeros"""
+        size = 1
+        for dim in shape:
+            size *= dim
+        dtype_obj = to_dtype(dtype)
 
-    def __add__(self, arr2) -> "Tensor":
-        result_requires_grad = self.requires_grad is True
-        if isinstance(arr2, Tensor):
-            other_arr = arr2.data
-            result_requires_grad = result_requires_grad or (arr2.requires_grad is True)
-        elif isinstance(arr2, np.ndarray) or isinstance(arr2, list):
-            other_arr = np.array(arr2)
-        else:
+        if dtype_obj.fmt is None:
+            raise TypeError(f"Unsupported dtype {dtype_obj.name} for Tensor data")
+
+        flat_data = [0] * size
+
+        t = cls.__new__(cls)
+        t.dtype = dtype_obj
+        t.device = device
+        t.requires_grad = requires_grad
+        t.grad = None
+        t.shape = tuple(shape)
+
+        try:
+            if dtype_obj.fmt == "e" and not ARRAY_E_SUPPORTED:
+                raw = bytearray(size * 2)
+                t._raw = raw
+                t._buffer = memoryview(raw).cast("H")  # unsigned short, 16‑bit
+            elif dtype_obj.fmt != "e":
+                raw = bytearray(struct.pack(f"<{size}{dtype_obj.fmt}", *flat_data))
+                t._raw = raw
+                t._buffer = memoryview(raw).cast(dtype_obj.fmt)
+            else:
+                arr = array.array(dtype_obj.fmt, flat_data)
+                t._raw = arr
+                t._buffer = memoryview(arr)
+            return t
+        except struct.error as e:
+            raise TypeError(f"Could not pack data with format '{dtype_obj.fmt}' for ones: {e}")
+        except TypeError as e:
             raise TypeError(
-                f"Addition operation between a tensor and {type(arr2)} not supported !"
+                f"Could not create array.array with format '{dtype_obj.fmt}' for ones: {e}"
             )
-
-        output_arr = self.data + other_arr
-
-        return Tensor(
-            output_arr,
-            dtype=output_arr.dtype,
-            device=self.device,
-            requires_grad=result_requires_grad,
-        )
-
-    def __mul__(self, other) -> "Tensor":
-        result_requires_grad = self.requires_grad is True
-        if isinstance(other, Tensor):
-            other_tensor = other.data
-            result_requires_grad = result_requires_grad or (other.requires_grad is True)
-        elif isinstance(other, (np.ndarray, list, int, float)):
-            other_tensor = np.array(other)
-        else:
-            raise TypeError(
-                f"Multiplication operation between a tensor and {type(other)} not supported !"
-            )
-        output_arr = self.data * other_tensor
-
-        return Tensor(
-            output_arr,
-            dtype=output_arr.dtype,
-            device=self.device,
-            requires_grad=result_requires_grad,
-        )
-
-    def __rmul__(self, other) -> "Tensor":
-        return self * other
-
-    def __sub__(self, arr2) -> "Tensor":
-        return self + (arr2 * -1)
-
-    def __truediv__(self, other) -> "Tensor":
-        result_requires_grad = self.requires_grad is True
-        other_data = None
-        if isinstance(other, Tensor):
-            other_data = other.data
-            result_requires_grad = result_requires_grad or (other.requires_grad is True)
-        elif isinstance(other, (np.ndarray, list, int, float)):
-            other_data = np.array(other)
-            # Scalars/arrays don't have requires_grad
-        else:
-            raise TypeError(
-                f"Division operation between a Tensor and {type(other)} not supported!"
-            )
-
-        # Let NumPy handle division by zero for true division (inf/nan results)
-        output_arr = self.data / other_data
-        return Tensor(
-            np.asarray(output_arr),
-            dtype=output_arr.dtype,  # Result dtype might change (e.g., int / int -> float)
-            device=self.device,
-            requires_grad=result_requires_grad,
-        )
-
-    def __floordiv__(self, other) -> "Tensor":
-        result_requires_grad = self.requires_grad is True
-        other_data = None
-        if isinstance(other, Tensor):
-            other_data = other.data
-            result_requires_grad = result_requires_grad or (other.requires_grad is True)
-        elif isinstance(other, (np.ndarray, list, int, float)):
-            other_data = np.array(other)
-        else:
-            raise TypeError(
-                f"Floor division operation between a Tensor and {type(other)} not supported!"
-            )
-
-        if np.isscalar(other_data):
-            if other_data == 0:
-                raise ZeroDivisionError("Scalar floor division by zero")
-        elif np.any(other_data == 0):
-            raise ZeroDivisionError(
-                "Floor division by zero in divisor tensor/array element(s)"
-            )
-
-        output_arr = self.data // other_data
-        return Tensor(
-            np.asarray(output_arr),
-            dtype=output_arr.dtype,
-            device=self.device,
-            requires_grad=result_requires_grad,
-        )
-
-    # This is : other / self
-    def __rtruediv__(self, other) -> "Tensor":
-        if isinstance(other, (Tensor, np.ndarray, list, int, float)):
-            other_tensor = Tensor(other) if not isinstance(other, Tensor) else other
-            return other_tensor / self
-        else:
-            raise TypeError(
-                f"Reverse true division not supported for type {type(other)} with Tensor"
-            )
-
-    def __rfloordiv__(self, other) -> "Tensor":  # other // self
-        if isinstance(other, (Tensor, np.ndarray, list, int, float)):
-            other_tensor = Tensor(other) if not isinstance(other, Tensor) else other
-            return other_tensor // self
-        else:
-            raise TypeError(
-                f"Reverse floor division not supported for type {type(other)} with Tensor"
-            )
-
-
-# %%
-t = Tensor(data=[1.0, 2.0], dtype=np.float32)
-t_float = Tensor(data=[1.0, 2.5, 3.0], dtype=np.float32)
-t_int = Tensor(data=[1, 2, 3], dtype=np.float32)
-t_int2 = Tensor(data=[4, 5, 6], dtype=np.float32)
-print(t)
-print(t_int2)
-
-# %%
