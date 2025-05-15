@@ -26,11 +26,11 @@ def uint16_to_float16(word: int) -> float:
     exp = (word >> 10) & 0x1F
     frac = word & 0x3FF
 
-    if exp == 0:  # subnormal or zero
+    if exp == 0:
         if frac == 0:
             return -0.0 if sign else 0.0
         return (-1) ** sign * 2 ** (-14) * (frac / 2**10)
-    if exp == 0x1F:  # inf or nan
+    if exp == 0x1F:
         if frac == 0:
             return float("-inf") if sign else float("inf")
         return float("nan")
@@ -63,8 +63,8 @@ def float16_to_uint16(value: float) -> int:
     if value == 0.0:
         return sign << 15
 
-    mant, exp2 = math.frexp(value)  # value = mant * 2 ** exp2 , 0.5 <= mant < 1
-    exp2 -= 1  # shift to 1 <= mant < 2
+    mant, exp2 = math.frexp(value)
+    exp2 -= 1
     mant *= 2
 
     exp16 = exp2 + 15
@@ -88,8 +88,18 @@ def floats_to_words(values: Iterable[float]) -> list[int]:
     return [float16_to_uint16(v) for v in values]
 
 
-# ---------- convenience pretty‑printer ----------
 def formatted_fp16_buffer(buf: memoryview) -> list[float]:
+    """
+    Expect a memoryview whose format is 'H' (uint16).
+    Returns a comma‑separated string of fp16 numbers.
+    """
+    if buf.format != "H":
+        raise TypeError("buffer format must be 'H' for uint16 words")
+    floats = words_to_floats(buf)
+    return [struct.unpack("f", struct.pack("f", f))[0] for f in floats]
+
+
+def formatted_fp16_buffer_fp64(buf: memoryview) -> list[float]:
     """
     Expect a memoryview whose format is 'H' (uint16).
     Returns a comma‑separated string of fp16 numbers.

@@ -1,110 +1,110 @@
-# import warnings
+import warnings
 
-# import numpy as np
-# import pytest
+import numpy as np
+import pytest
 
-# from grad.tensor import Tensor
-
-
-# class TestAddition:
-#     @pytest.mark.parametrize(
-#         "a,b",
-#         [
-#             ([1, 2, 3], [4, 5, 6]),
-#             ([[1, 2], [3, 4]], [[10, 20], [30, 40]]),
-#             (np.arange(6).reshape(2, 3), np.ones((2, 3))),
-#         ],
-# #     )
-# #     def test_add_matches_numpy(self, a, b):
-# #         t_a = Tensor(a)
-# #         t_b = Tensor(b)
-# #         t_c = t_a + t_b
-
-# #         c = t_c.numpy()
-#         np.testing.assert_array_equal(c, np.array(a) + np.array(b))
-
-# #     def test_broadcasting(self):
-# #         t0 = Tensor([[1, 2, 3], [4, 5, 6]])
-# #         t1 = Tensor([10, 20, 30])
-# #         out = (t0 + t1).numpy()
-# #         expected = np.array([[11, 22, 33], [14, 25, 36]])
-# #         np.testing.assert_array_equal(out, expected)
-
-# #     @pytest.mark.parametrize("shape", [(0,), (2, 0, 3)])
-# #     def test_zero_size(self, shape):
-# #         t = Tensor.empty(*shape)
-# #         assert t.numpy().size == 0
+from grad.tensor import Tensor
 
 
-# class TestMultiplication:
-#     @pytest.mark.parametrize(
-#         "a,b",
-#         [
-#             ([1, 2, 3], [4, 5, 6]),
-#             ([[1, 2], [3, 4]], [[10, 20], [30, 40]]),
-#             (np.arange(6).reshape(2, 3), np.ones((2, 3))),
-#             ([-1, -2], [5, -6]),
-#             ([1.5, 2.5], [0.5, 1.0]),
-#             ([1, 2], [0.5, 1.5]),
-#         ],
-# #     )
-# #     def test_mul_matches_numpy(self, a, b):
-# #         t_a = Tensor(a)
-# #         t_b = Tensor(b)
-# #         t_c = t_a * t_b
+class TestAddition:
+    @pytest.mark.parametrize(
+        "a,b",
+        [
+            ([1, 2, 3], [4, 5, 6]),
+            ([[1, 2], [3, 4]], [[10, 20], [30, 40]]),
+            ([[0, 1, 2], [3, 4, 5]], [[1, 1, 1], [1, 1, 1]]),
+        ],
+    )
+    def test_add_matches_numpy(self, a, b):
+        t_a = Tensor(a)
+        t_b = Tensor(b)
+        t_c = t_a + t_b
 
-# #         c = t_c.numpy()
-#         np.testing.assert_array_equal(c, np.array(a) * np.array(b))
+        np.testing.assert_array_equal(t_c.to_numpy(), np.array(a) + np.array(b))
 
-#     @pytest.mark.parametrize(
-#         "arr, scalar",
-#         [
-#             ([1, 2, 3], 5),
-#             ([[1, 2], [3, 4]], 2.5),
-#             (np.arange(6).reshape(2, 3), -1),
-#             ([1.5, 2.5], 0),
-#         ],
-# #     )
-# #     def test_mul_scalar(self, arr, scalar):
-# #         t_arr = Tensor(arr)
+    def test_add(self):
+        t0 = Tensor([[1, 2, 3], [4, 5, 6]])
+        t1 = Tensor([[10, 20, 30], [40, 50, 60]])
+        out = t0 + t1
+        expected = np.array([[11, 22, 33], [44, 55, 66]])
+        np.testing.assert_array_equal(out.to_numpy(), expected)
 
-# #         # Test tensor * scalar
-#         # t_result1 = t_arr * scalar
-#         # result1 = t_result1.numpy()
-#         # np.testing.assert_array_equal(result1, np.array(arr) * scalar)
+    # @pytest.mark.parametrize("shape", [(0,), (2, 0, 3)])
+    # def test_zero_size(self, shape):
+    #     t = Tensor.empty(*shape)
+    #     assert t.numpy().size == 0
 
-#         # # Test scalar * tensor (__rmul__)
-#         # t_result2 = scalar * t_arr
-#         # result2 = t_result2.numpy()
-#         # np.testing.assert_array_equal(result2, scalar * np.array(arr))
 
-# #     def test_mul_broadcasting(self):
-# #         t0 = Tensor([[1, 2, 3], [4, 5, 6]])
-# #         t1 = Tensor([10, 20, 30])
-# #         out = (t0 * t1).numpy()
-# #         expected = np.array([[10, 40, 90], [40, 100, 180]])
-# #         np.testing.assert_array_equal(out, expected)
+class TestMultiplication:
+    @pytest.mark.parametrize(
+        "a,b",
+        [
+            ([1, 2, 3], [4, 5, 6]),
+            ([[1, 2], [3, 4]], [[10, 20], [30, 40]]),
+            ([[0, 1, 2], [3, 4, 5]], [[1, 1, 1], [1, 1, 1]]),
+            ([-1, -2], [5, -6]),
+            ([1.5, 2.5], [0.5, 1.0]),
+            ([1, 2], [0.5, 1.5]),
+        ],
+    )
+    def test_mul_matches_numpy(self, a, b):
+        t_a = Tensor(a)
+        t_b = Tensor(b)
+        t_c = t_a * t_b
 
-# #         t2 = Tensor([[10], [20]])
-# #         t2_scalar = Tensor(2)
+        c = t_c.to_numpy()
+        np.testing.assert_array_equal(c, np.array(a) * np.array(b))
 
-# #         out2 = (t2 * t2_scalar).numpy()
-# #         expected2 = np.array([[20], [40]])
-# #         np.testing.assert_array_equal(out2, expected2)
+    @pytest.mark.parametrize(
+        "arr, scalar",
+        [
+            ([1, 2, 3], 5),
+            ([[1, 2], [3, 4]], 2.5),
+            ([[0, 1, 2], [3, 4, 5]], -1),
+            ([1.5, 2.5], 0),
+        ],
+    )
+    def test_mul_scalar(self, arr, scalar):
+        t_arr = Tensor(arr)
 
-# #     @pytest.mark.parametrize("shape", [(0,), (2, 0, 3)])
-# #     def test_mul_zero_size(self, shape):
-# #         t0 = Tensor.empty(*shape)
-# #         t1 = Tensor.empty(*shape)
-# #         out = (t0 * t1).numpy()
-# #         expected = np.empty(shape, dtype=t0.dtype) # Numpy default is float64 for empty
-#         np.testing.assert_array_equal(out, expected)
+        # Test tensor * scalar
+        t_result1 = t_arr * scalar
+        result1 = t_result1.to_numpy()
+        np.testing.assert_array_equal(result1, np.array(arr) * scalar)
 
-# #         # scalar and tensor multiplication
-# #         t2 = Tensor(5)
-# #         # out2 = (t0 * t2).numpy() # This will be an empty array with shape `shape`
-# #         # expected2 = np.empty(shape, dtype=t0.dtype) * 5 # an empty array
-#         # np.testing.assert_array_equal(out2, expected2)
+        # Test scalar * tensor (__rmul__)
+        t_result2 = scalar * t_arr
+        result2 = t_result2.to_numpy()
+        np.testing.assert_array_equal(result2, scalar * np.array(arr))
+
+    def test_mul_add(self):
+        t0 = Tensor([[1, 2, 3], [4, 5, 6]])
+        t1 = Tensor([[10, 20, 30], [40, 50, 60]])
+        out = t0 * t1
+        expected = np.array([[1, 2, 3], [4, 5, 6]]) * np.array([[10, 20, 30], [40, 50, 60]])
+        np.testing.assert_array_equal(out.to_numpy(), expected)
+
+        t2 = Tensor([[10], [20]])
+        t2_scalar = 2
+
+        out2 = t2 * t2_scalar
+        expected2 = np.array([[20], [40]])
+        np.testing.assert_array_equal(out2.to_numpy(), expected2)
+
+    # @pytest.mark.parametrize("shape", [(0,), (2, 0, 3)])
+    # def test_mul_zero_size(self, shape):
+    # t0 = Tensor.empty(*shape)
+    # t1 = Tensor.empty(*shape)
+    # out = (t0 * t1).numpy()
+    # expected = np.empty(shape, dtype=t0.dtype) # Numpy default is float64 for empty
+    # np.testing.assert_array_equal(out, expected)
+
+    # scalar and tensor multiplication
+    # t2 = Tensor(5)
+    # out2 = (t0 * t2).numpy()  # This will be an empty array with shape `shape`
+    # expected2 = np.empty(shape, dtype=t0.dtype) * 5  # an empty array
+    # np.testing.assert_array_equal(out2, expected2)
+
 
 # #         # Multiplying a zero-sized tensor with a scalar results in a zero-sized tensor
 # #         out2 = (t0 * t2).numpy()
@@ -115,39 +115,39 @@
 #         np.testing.assert_array_equal(out3, np.empty(expected_shape_dtype.shape, dtype=expected_shape_dtype.dtype))
 
 
+class TestSubtraction:
+    @pytest.mark.parametrize(
+        "a,b",
+        [
+            ([1, 2, 3], [4, 5, 6]),
+            ([[1, 2], [3, 4]], [[10, 20], [30, 40]]),
+            ([[0, 1, 2], [3, 4, 5]], [[1, 1, 1], [1, 1, 1]]),
+            ([-1, -2], [5, -6]),
+            ([1.5, 2.5], [0.5, 1.0]),
+            ([1, 2], [0.5, 1.5]),
+        ],
+    )
+    def test_sub_matches_numpy(self, a, b):
+        t_a = Tensor(a)
+        t_b = Tensor(b)
+        t_c = t_a - t_b
 
-# class TestSubtraction:
-#     @pytest.mark.parametrize(
-#         "a,b",
-#         [
-#             ([1, 2, 3], [4, 5, 6]),
-#             ([[1, 2], [3, 4]], [[10, 20], [30, 40]]),
-#             (np.arange(6).reshape(2, 3), np.ones((2, 3))),
-#             ([-1, -2], [5, -6]),
-#             ([1.5, 2.5], [0.5, 1.0]),
-#             ([1, 2], [0.5, 1.5]),
-#         ],
-# #     )
-# #     def test_sub_matches_numpy(self, a, b):
-# #         t_a = Tensor(a)
-# #         t_b = Tensor(b)
-# #         t_c = t_a - t_b
+        c = t_c.to_numpy()
+        np.testing.assert_array_equal(c, np.array(a) - np.array(b))
 
-# #         c = t_c.numpy()
-#         np.testing.assert_array_equal(c, np.array(a) - np.array(b))
+    def test_sub_(self):
+        t0 = Tensor([[10, 20, 30], [40, 50, 60]])
+        t1 = Tensor([[1, 2, 3], [4, 5, 6]])
+        out = (t0 - t1).to_numpy()
+        expected = np.array([[9, 18, 27], [36, 45, 54]])
+        np.testing.assert_array_equal(out, expected)
 
-# #     def test_sub_broadcasting(self):
-# #         t0 = Tensor([[10, 20, 30], [40, 50, 60]])
-# #         t1 = Tensor([1, 2, 3])
-# #         out = (t0 - t1).numpy()
-# #         expected = np.array([[9, 18, 27], [39, 48, 57]])
-# #         np.testing.assert_array_equal(out, expected)
+        t2 = Tensor([[10], [20]])
+        t3 = 5
+        out2 = (t2 - t3).to_numpy()
+        expected2 = np.array([[5], [15]])
+        np.testing.assert_array_equal(out2, expected2)
 
-# #         t2 = Tensor([[10], [20]])
-# #         t3 = Tensor(5)
-# #         out2 = (t2 - t3).numpy()
-# #         expected2 = np.array([[5], [15]])
-# #         np.testing.assert_array_equal(out2, expected2)
 
 # #     @pytest.mark.parametrize("shape", [(0,), (2, 0, 3)])
 # #     def test_sub_zero_size(self, shape):
