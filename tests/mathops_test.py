@@ -22,7 +22,7 @@ class TestAddition:
 
         np.testing.assert_array_equal(t_c.to_numpy(), np.array(a) + np.array(b))
 
-    def test_broadcasting(self):
+    def test_add(self):
         t0 = Tensor([[1, 2, 3], [4, 5, 6]])
         t1 = Tensor([[10, 20, 30], [40, 50, 60]])
         out = t0 + t1
@@ -77,7 +77,7 @@ class TestMultiplication:
         result2 = t_result2.to_numpy()
         np.testing.assert_array_equal(result2, scalar * np.array(arr))
 
-    def test_mul_broadcasting(self):
+    def test_mul_add(self):
         t0 = Tensor([[1, 2, 3], [4, 5, 6]])
         t1 = Tensor([[10, 20, 30], [40, 50, 60]])
         out = t0 * t1
@@ -135,7 +135,7 @@ class TestSubtraction:
         c = t_c.to_numpy()
         np.testing.assert_array_equal(c, np.array(a) - np.array(b))
 
-    def test_sub_broadcasting(self):
+    def test_sub_(self):
         t0 = Tensor([[10, 20, 30], [40, 50, 60]])
         t1 = Tensor([[1, 2, 3], [4, 5, 6]])
         out = (t0 - t1).to_numpy()
