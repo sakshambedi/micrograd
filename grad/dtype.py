@@ -19,7 +19,7 @@ class DTypeMetaClass(type):
 
 @dataclass(frozen=True, eq=False)
 class DType(metaclass=DTypeMetaClass):
-    priority: int  # this determines when things get upcasted
+    priority: int
     itemsize: int
     name: str
     fmt: FmtStr | None
@@ -33,16 +33,27 @@ class DType(metaclass=DTypeMetaClass):
 
 class dtypes:
     void: Final[DType] = DType.new(-1, 0, "void", None)
-    bool: Final[DType] = DType.new(10, 1, "bool", "?")
+    bool: Final[DType] = DType.new(0, 1, "bool", "?")
     int8: Final[DType] = DType.new(1, 1, "signed char", "b")
-    float32: Final[DType] = DType.new(200, 4, "float32", "f")
-    fp32: Final[DType] = float32
-    float16: Final[DType] = DType.new(180, 2, "float16", "e")
-    fp16: Final[DType] = float16
-    int32: Final[DType] = DType.new(100, 4, "int32", "i")
+    uint8: Final[DType] = DType.new(2, 1, "unsigned char", "B")
+    int16: Final[DType] = DType.new(3, 2, "short", "h")
+    uint16: Final[DType] = DType.new(4, 2, "unsigned short", "H")
+    int32: Final[DType] = DType.new(5, 4, "int", "i")
+    uint32: Final[DType] = DType.new(6, 4, "unsigned int", "I")
+    int64: Final[DType] = DType.new(7, 8, "long", "q")
+    uint64: Final[DType] = DType.new(8, 8, "unsigned long", "Q")
 
-    def __init__(self):
-        pass
+    float16: Final[DType] = DType.new(9, 2, "float16", "e")
+    float32: Final[DType] = DType.new(10, 4, "float32", "f")
+    fp16: Final[DType] = float16
+    fp32: Final[DType] = float32
+    float64: Final[DType] = DType.new(11, 8, "double", "d")
+
+    @staticmethod
+    def _upcast(t1: DType, t2: DType) -> DType:
+        if t1 and t2:
+            return t1 if t1.priority >= t2.priority else t2
+        raise TypeError(f"Cannot upcast dtypes {t1.name} and {t2.name}")
 
 
 DTypeLike = Union[str, DType]
