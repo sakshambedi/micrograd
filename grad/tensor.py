@@ -162,7 +162,7 @@ class Tensor:
     __add__ = lambda self, other: self._binary_op(other, operator.add)
     __mul__ = lambda self, other: self._binary_op(other, operator.mul)
     __rmul__ = lambda self, other: self._binary_op(other, operator.mul)
-    __sub__ = lambda self, other: self._binary_op(-1 * other, operator.add)
+    __sub__ = lambda self, other: self._binary_op(other, operator.sub)
 
     @classmethod
     def _filled(
