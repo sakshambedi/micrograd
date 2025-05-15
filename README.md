@@ -25,7 +25,6 @@ As of now, `petit-grad` supports:
   - True Division (`/`)
   - Floor Division (`//`)
 - **Operator Overloading:** These operations can be used directly with Python's arithmetic operators.
-- **Broadcasting:** Operations between tensors of different (but compatible) shapes are supported, following NumPy-like broadcasting rules.
 - **Internal Data Representation:**
   - Tensors store their data internally using Python's `memoryview` backed by `array.array` or `bytearray`, not NumPy arrays. This helps understand lower-level data handling.
 - **Data Access:**
