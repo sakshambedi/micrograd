@@ -6,6 +6,17 @@ import pytest
 from grad.tensor import Tensor, dtypes
 
 
+def generate_nested_factory_data(shape, value):
+    """Helper to generate nested list structure for factory tests."""
+    if not shape:
+        return value  # Scalar case
+    if len(shape) == 1:
+        return [value] * shape[0]
+    # Recursively build nested list
+    inner_shape = shape[1:]
+    return [generate_nested_factory_data(inner_shape, value) for _ in range(shape[0])]
+
+
 def check_tensor_data(tensor: Tensor, expected_nested):
     expected_shape = Tensor._infer_shape(expected_nested)
     assert (
@@ -21,7 +32,7 @@ def check_tensor_data(tensor: Tensor, expected_nested):
             for rr, ee in zip(r, e):
                 rec(rr, ee)
         elif isinstance(e, float):
-            assert math.isclose(r, e, rel_tol=1e-2, abs_tol=1e-8)
+            assert math.isclose(r, e, rel_tol=1e-3, abs_tol=1e-8)
         else:
             assert r == e
 
@@ -104,11 +115,12 @@ class TestTensorFactories:
     @pytest.mark.parametrize("shape", [(2, 3), (3, 2), (1,)])
     def test_ones_float(self, shape):
         t = Tensor.ones(shape, dtype=dtypes.float32)
-        check_tensor_data(t, [[1.0] * shape[-1]] * (shape[0] if len(shape) > 1 else 1))
+        check_tensor_data(t, generate_nested_factory_data(shape, 1.0))
 
     def test_ones_int(self):
-        t = Tensor.ones((1, 4), dtype=dtypes.int32)
-        check_tensor_data(t, [[1, 1, 1, 1]])
+        shape = (1, 4)
+        t = Tensor.ones(shape, dtype=dtypes.int32)
+        check_tensor_data(t, generate_nested_factory_data(shape, 1))
 
     def test_zero_size(self):
         t0 = Tensor.ones((0,), dtype=dtypes.float32)
@@ -120,11 +132,12 @@ class TestTensorFactories:
     def test_zeros(self):
         shape = (3, 2)
         t = Tensor.zeros(shape, dtype=dtypes.float32)
-        check_tensor_data(t, [[0.0, 0.0]] * 3)
+        check_tensor_data(t, generate_nested_factory_data(shape, 0.0))
 
     def test_zeros_int(self):
-        t = Tensor.zeros((5,), dtype=dtypes.int32)
-        check_tensor_data(t, [0, 0, 0, 0, 0])
+        shape = (5,)
+        t = Tensor.zeros(shape, dtype=dtypes.int32)
+        check_tensor_data(t, generate_nested_factory_data(shape, 0))
 
 
 class TestFloat16:
@@ -136,15 +149,21 @@ class TestFloat16:
         assert t._buffer.nbytes == 2 * len(data)
         check_tensor_data(t, data)
 
-    def test_fp16_factories(self):
-        for factory in (Tensor.ones, Tensor.zeros):
-            t = factory((2, 2), dtype=dtypes.float16)
-            assert t._buffer.format == "H"
-            assert t._buffer.nbytes == 4 * dtypes.float16.itemsize
-            expected = (
-                [[1.0, 1.0], [1.0, 1.0]] if factory is Tensor.ones else [[0.0, 0.0], [0.0, 0.0]]
-            )
-            check_tensor_data(t, expected)
+    def test_fp16_ones(self):
+        shape = (2, 2)
+        t = Tensor.ones(shape, dtype=dtypes.float16)
+        assert t._buffer.format == "H"
+        assert t._buffer.nbytes == 4 * dtypes.float16.itemsize
+        expected = generate_nested_factory_data(shape, 1.0)
+        check_tensor_data(t, expected)
+
+    def test_fp16_zeros(self):
+        shape = (2, 2)
+        t = Tensor.zeros(shape, dtype=dtypes.float16)
+        assert t._buffer.format == "H"
+        assert t._buffer.nbytes == 4 * dtypes.float16.itemsize
+        expected = generate_nested_factory_data(shape, 0.0)
+        check_tensor_data(t, expected)
 
 
 def test_flatten_and_shape():
