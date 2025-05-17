@@ -1,6 +1,6 @@
 import math
 import struct
-from typing import Iterable
+from collections.abc import Iterable
 
 # ---------- feature probe ----------
 try:

@@ -1,26 +1,26 @@
-# Petit-Grad: A Learning Journey into Deep Learning Frameworks
+# Micro-Grad: A Learning Journey into Deep Learning Frameworks
 
-<!-- ![Petit-Grad](./imgs/petitgrad-banner.jpeg) -->
+<!-- ![Micro-Grad](./imgs/petitgrad-banner.jpeg) -->
 
 <p align="center">
-  <img src="./imgs/petitgrad-banner.jpeg" alt="Petit-Grad" width="600"/>
+  <img src="./imgs/micrograd-banner-m.jpeg" alt="Micrograd-Grad" width="600"/>
 </p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/sakshambedi/petit-grad)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/sakshambedi/Micro-Grad)
 
 This project is a personal exploration and implementation of a simplified tensor library, inspired by [tinygrad](https://github.com/geohot/tinygrad) and [PyTorch](https://pytorch.org/). The primary goal is to understand the fundamental concepts and mechanics behind modern deep learning frameworks by building one from scratch.
 
 ## What is this?
 
-`petit-grad` is a Python-based library that provides a `Tensor` object, similar to those found in NumPy, PyTorch, or TensorFlow. It aims to replicate some of the core functionalities, particularly focusing on automatic differentiation and tensor operations, to gain a deeper insight into their inner workings.
+**Micro-Grad** is a Python-based library that provides a `Tensor` object, similar to those found in NumPy, PyTorch, or TensorFlow. It aims to replicate some of the core functionalities, particularly focusing on automatic differentiation and tensor operations, to gain a deeper insight into their inner workings.
 
 This is an educational project. While the aim is to create functional components, it's not intended to be a production-ready deep learning library.
 
 ## Current Features
 
-As of now, `petit-grad` supports:
+As of now, `Micro-Grad` supports:
 
 ### Tensor Creation
 
@@ -119,8 +119,8 @@ tinygrad-homemade/
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/sakshambedi/petit-grad.git
-   cd petit-grad
+   git clone https://github.com/sakshambedi/Micro-Grad.git
+   cd Micro-Grad
    ```
 
 2. **Explore the code:**

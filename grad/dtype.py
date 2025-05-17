@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Final, Literal, Optional, Union
+from typing import Final, Literal, Union
 
 FmtStr = Literal["?", "b", "B", "h", "H", "i", "I", "q", "Q", "e", "f", "d"]
 
@@ -27,7 +27,7 @@ class DType(metaclass=DTypeMetaClass):
     _scalar: DType | None
 
     @staticmethod
-    def new(priority: int, itemsize: int, name: str, fmt: Optional[FmtStr]):
+    def new(priority: int, itemsize: int, name: str, fmt: FmtStr | None):
         return DType(priority, itemsize, name, fmt, 1, None)
 
 

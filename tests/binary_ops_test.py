@@ -1,5 +1,3 @@
-# import warnings
-
 import numpy as np
 import pytest
 
@@ -223,15 +221,14 @@ class TestDivision:
         # We update the test to reflect this current code behavior,
         # although the desired behavior (NumPy-like inf/nan) is different as per README.
         if arr == [[0, 1, 2], [3, 4, 5]] and scalar == -1:
-             # Expect ZeroDivisionError based on current implementation bug
-             with pytest.raises(ZeroDivisionError):
-                  _ = scalar / t_arr
+            # Expect ZeroDivisionError based on current implementation bug
+            with pytest.raises(ZeroDivisionError):
+                _ = scalar / t_arr
         else:
             # For other cases, assert NumPy-like behavior (inf/nan)
             t_res2 = scalar / t_arr
             # Use equal_nan=True as true division can result in NaN (e.g., 0/0)
             np.testing.assert_allclose(t_res2.to_numpy(), scalar / np.array(arr), equal_nan=True)
-
 
         # def test_true_div_broadcasting(self):
         #     t0 = Tensor([[10, 20, 30], [5, 25, 50]])

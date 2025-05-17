@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import array
 import operator
+from collections.abc import Generator, Iterable, Sequence
 
 # Local Caching at Module Level 3-4x speedup in tight loops (microbenchmark)
 from math import prod as _prod
-from typing import Any, Generator, Iterable, List, Sequence
+from typing import Any
 
 from grad.dtype import DType, DTypeLike, dtypes, to_dtype
 from grad.utils.fp16 import float16_to_uint16, formatted_fp16_buffer, uint16_to_float16
@@ -75,11 +76,11 @@ class Tensor:
             self._buffer = self._make_buffer([_to_storage(data, self.dtype)])
 
     @classmethod
-    def zeros(cls, shape: Sequence[int], **kw) -> "Tensor":
+    def zeros(cls, shape: Sequence[int], **kw) -> Tensor:
         return cls._filled(shape, 0, **kw)
 
     @classmethod
-    def ones(cls, shape: Sequence[int], **kw) -> "Tensor":
+    def ones(cls, shape: Sequence[int], **kw) -> Tensor:
         return cls._filled(shape, 1, **kw)
 
     @staticmethod
@@ -114,7 +115,7 @@ class Tensor:
         return memoryview(arr)
 
     @staticmethod
-    def _nest(flat: List[Any], dims: List[int]) -> Any:
+    def _nest(flat: list[Any], dims: list[int]) -> Any:
         if not dims:
             return flat.pop(0)
         return [Tensor._nest(flat, dims[1:]) for _ in range(dims[0])]
@@ -209,7 +210,7 @@ class Tensor:
         dtype: DTypeLike = dtypes.float32,
         device: str = "cpu",
         requires_grad: bool | None = None,
-    ) -> "Tensor":
+    ) -> Tensor:
         inst = cls.__new__(cls)
         inst.dtype = to_dtype(dtype)
         inst.shape = tuple(shape)
@@ -283,7 +284,8 @@ class Tensor:
             t_shape = self.shape
             if len(idx) == len(t_shape):
                 return _from_storage(
-                    self._buffer[Tensor._contiguous_index(list(self.shape), list(idx))], self.dtype
+                    self._buffer[Tensor._contiguous_index(list(self.shape), list(idx))],
+                    self.dtype,
                 )
             else:
                 raise IndexError(
