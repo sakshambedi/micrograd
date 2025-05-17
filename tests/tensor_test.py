@@ -19,9 +19,7 @@ def generate_nested_factory_data(shape, value):
 
 def check_tensor_data(tensor: Tensor, expected_nested):
     expected_shape = Tensor._infer_shape(expected_nested)
-    assert (
-        tensor.shape == expected_shape
-    ), f"shape mismatch: expected {expected_shape}, got {tensor.shape}"
+    assert tensor.shape == expected_shape, f"shape mismatch: expected {expected_shape}, got {tensor.shape}"
 
     reconstructed = tensor._to_nested()  # new helper in refactor
 
