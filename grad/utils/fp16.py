@@ -51,7 +51,6 @@ def float16_to_uint16(value: float) -> int:
     if _STRUCT_E_OK:  # fast path
         return struct.unpack("<H", struct.pack("<e", value))[0]
 
-    # manual encode (round to nearest even)
     if math.isnan(value):
         return 0x7E00  # canonical NaN
     if math.isinf(value):
@@ -91,7 +90,18 @@ def floats_to_words(values: Iterable[float]) -> list[int]:
 def formatted_fp16_buffer(buf: memoryview) -> list[float]:
     """
     Expect a memoryview whose format is 'H' (uint16).
-    Returns a comma‑separated string of fp16 numbers.
+    Returns a list of fp16 numbers converted to Python floats.
+    """
+    if buf.format != "H":
+        raise TypeError("buffer format must be 'H' for uint16 words")
+    return words_to_floats(buf)
+
+
+def formatted_fp16_buffer_with_cast(buf: memoryview) -> list[float]:
+    """
+    Expect a memoryview whose format is 'H' (uint16).
+    Returns a list of fp16 numbers with an additional cast through float32.
+    This can help normalize the bit pattern when compatibility with float32 is needed.
     """
     if buf.format != "H":
         raise TypeError("buffer format must be 'H' for uint16 words")
@@ -102,9 +112,7 @@ def formatted_fp16_buffer(buf: memoryview) -> list[float]:
 def formatted_fp16_buffer_fp64(buf: memoryview) -> list[float]:
     """
     Expect a memoryview whose format is 'H' (uint16).
-    Returns a comma‑separated string of fp16 numbers.
+    Returns a list of fp16 numbers converted to Python floats.
+    This is an alias for formatted_fp16_buffer for backward compatibility.
     """
-    if buf.format != "H":
-        raise TypeError("buffer format must be 'H' for uint16 words")
-    floats = words_to_floats(buf)
-    return floats
+    return formatted_fp16_buffer(buf)

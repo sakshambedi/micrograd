@@ -1,56 +1,21 @@
 from __future__ import annotations
 
 import array
-import operator
 from collections.abc import Generator, Iterable, Sequence
-
-# Local Caching at Module Level 3-4x speedup in tight loops (microbenchmark)
 from math import prod as _prod
 from typing import Any
 
-from grad.dtype import DType, DTypeLike, dtypes, to_dtype
-from grad.utils.fp16 import float16_to_uint16, formatted_fp16_buffer, uint16_to_float16
+from grad.buffer import Buffer
+from grad.dtype import DType, DTypeLike, dtypes
+from grad.utils.fp16 import formatted_fp16_buffer
 
 ARRAY_E_SUPPORTED = "e" in array.typecodes
-
-
-def _storage_format(dtype: DType) -> str:
-    """Return the actual format code used to store data in the buffer."""
-    if dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
-        return "H"  # store fp16 as uint16
-    if dtype.fmt == "?":
-        return "b"  # store bools as signed char
-    if dtype.fmt is None:
-        raise TypeError(f"Unsupported dtype {dtype.name} (no format string)")
-    return dtype.fmt
-
-
-def _to_storage(val: Any, dtype: DType) -> Any:
-    """Convert val (python scalar) to the representation expected by storage.
-    Keeps numeric types fast for the common cases, only struct‑packs for fp16.
-    """
-    if dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
-        # Use manual conversion when struct 'e' is not supported
-        return float16_to_uint16(float(val))
-    if dtype.fmt == "?":
-        return 1 if bool(val) else 0
-    return val
-
-
-def _from_storage(stored: Any, dtype: DType) -> Any:
-    """Inverse of _to_storage, read a python value from raw buffer item."""
-    if dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
-        # Use manual conversion when struct \'e\' is not supported
-        return uint16_to_float16(stored)
-    if dtype.fmt == "?":
-        return bool(stored)
-    return stored
 
 
 class Tensor:
     """Tiny, NumPy‑like dense tensor backed by a contiguous buffer."""
 
-    __slots__ = ("dtype", "shape", "device", "requires_grad", "grad", "_buffer")
+    __slots__ = ("shape", "device", "requires_grad", "grad", "storage", "_ctx", "_prev")
 
     def __init__(
         self,
@@ -60,28 +25,38 @@ class Tensor:
         device: str = "cpu",
         requires_grad: bool | None = None,
     ) -> None:
-        self.dtype: DType = to_dtype(dtype)
         self.device = device
         self.requires_grad = requires_grad
         self.grad: Tensor | None = None
+        self.storage: Buffer | None = None
+        self._ctx = None
+        self._prev = None
 
         if data is None:
             self.shape = ()
-            self._buffer = self._make_buffer([_to_storage(0, self.dtype)])
+            self.storage = Buffer(dtype, [0])
         elif isinstance(data, (list, tuple)):
             self.shape = self._infer_shape(data)
-            self._buffer = self._list_like_to_buffer(data)
+            self.storage = Buffer(dtype, self._flatten_gen(data))
         else:
             self.shape = ()
-            self._buffer = self._make_buffer([_to_storage(data, self.dtype)])
+            self.storage = Buffer(dtype, [data])
 
     @classmethod
     def zeros(cls, shape: Sequence[int], **kw) -> Tensor:
-        return cls._filled(shape, 0, **kw)
+        # return cls._filled(shape, 0, **kw)
+        ...
 
     @classmethod
     def ones(cls, shape: Sequence[int], **kw) -> Tensor:
-        return cls._filled(shape, 1, **kw)
+        # return cls._filled(shape, 1, **kw)
+        ...
+
+    @property
+    def dtype(self) -> DType:
+        if self.storage is None:
+            raise AttributeError("Tensor with data is not initialized yet!")
+        return self.storage.dtype
 
     @staticmethod
     def _infer_shape(seq: Sequence) -> tuple[int, ...]:
@@ -102,17 +77,17 @@ class Tensor:
         else:
             yield x
 
-    def _list_like_to_buffer(self, nested: Sequence) -> memoryview:
-        """Stream‑flatten nested into an array.array"""
-        storage_fmt = _storage_format(self.dtype)
-        arr = array.array(storage_fmt)
-        arr.extend(_to_storage(v, self.dtype) for v in self._flatten_gen(nested))
-        return memoryview(arr)
+    def __repr__(self) -> str:
+        nested = self._to_nested()
+        return (
+            f"Tensor(shape={self.shape}, "
+            f"device='{self.device}', requires_grad={self.requires_grad}, "
+            f"data={nested})"
+        )
 
-    def _make_buffer(self, iterable: Iterable[Any]) -> memoryview:
-        storage_fmt = _storage_format(self.dtype)
-        arr = array.array(storage_fmt, iterable)
-        return memoryview(arr)
+    def __str__(self) -> str:
+        nested = self._to_nested()
+        return str(nested)
 
     @staticmethod
     def _nest(flat: list[Any], dims: list[int]) -> Any:
@@ -123,171 +98,44 @@ class Tensor:
     def _to_nested(self) -> Any:
         if _prod(self.shape) == 0:
             flat: list[Any] = []
-        elif self.dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
-            flat = formatted_fp16_buffer(self._buffer)
         else:
-            flat = list(self._buffer)
+            if self.storage is None:
+                raise AttributeError("Tensor with data is not initialized yet!")
+
+            if self.dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
+                flat = formatted_fp16_buffer(self.storage._storage)  # Convert uint16 -> fp16
+            else:
+                flat = self.storage.to_list()
         return self._nest(flat, list(self.shape))
 
-    @staticmethod
-    def _broadcast(t: Tensor, shape, fmt) -> Tensor:
-        if t.shape == shape:
-            return t
+    def buffer_id(self) -> int:
+        """Returns the memory address of the underlying storage.
+        Read more : https://www.w3schools.com/python/ref_func_id.asp"""
+        if self.storage is None:
+            return 0
+        return id(self.storage._storage)
 
-        # Broadcasting a scalar tensor to the target shape.
-        if t.shape == ():
-            scalar_val = _from_storage(t._buffer[0], t.dtype)
-            storage_fmt = _storage_format(t.dtype)
-            numel = _prod(shape)
+    def view(self, *shape: int | tuple) -> Tensor:
+        if len(shape) == 1 and isinstance(shape[0], (tuple, list)):
+            if isinstance(shape[0], list):
+                raise TypeError("view() expects a tuple or separate integers, not a list")
+            shape = tuple(shape[0])
+        else:
+            shape = tuple(shape)
 
-            arr = array.array(storage_fmt, [_to_storage(scalar_val, fmt)] * numel)
-            new_tensor = Tensor.__new__(Tensor)
-            new_tensor.dtype = fmt
-            new_tensor.shape = shape
-            new_tensor.device = t.device
-            new_tensor.requires_grad = t.requires_grad
-            new_tensor.grad = None
-            new_tensor._buffer = memoryview(arr)
-            return new_tensor
+        new_size, old_size = _prod(shape), _prod(self.shape)
 
-        raise ValueError(f"Cannot broadcast tensor with shape {t.shape} to {shape}")
+        if new_size != old_size:
+            raise ValueError(
+                f"Cannot view tensor of shape {self.shape} with {old_size} elements as shape {shape} with {new_size} elements"
+            )
 
-    def _binary_op(self, other: Tensor | int | float | bool | list | tuple, op):
-        if not isinstance(other, Tensor):
-            if isinstance(other, (list, tuple)):
-                other = Tensor(other, dtype=self.dtype, device=self.device)
-            elif isinstance(other, (float, int, bool)):
-                other = Tensor([other] * _prod(self.shape), dtype=self.dtype, device=self.device)
-                other.shape = self.shape
-
-        _upcaste_dtype = dtypes._upcast(self.dtype, other.dtype)
-        if self.shape != other.shape:
-            if self.shape == ():
-                self = Tensor._broadcast(self, other.shape, _upcaste_dtype)
-            elif other.shape == ():
-                other = Tensor._broadcast(other, self.shape, _upcaste_dtype)
-            else:
-                raise ValueError(f"Shape mismatch: {self.shape} vs {other.shape}")
-
-        out = Tensor.__new__(Tensor)
-        out.dtype = _upcaste_dtype
-        out.shape = self.shape
-        out.device = self.device
-        out.requires_grad = (
-            (self.requires_grad or False) or (other.requires_grad or False)
-        ) or None
-        out.grad = None
-
-        storage_fmt = _storage_format(out.dtype)
-        buf = array.array(storage_fmt)
-        append = buf.append  # local fast name
-
-        for a, b in zip(self._buffer, other._buffer):
-            aval = _from_storage(a, self.dtype)
-            bval = _from_storage(b, other.dtype)
-
-            # Simplified division handling relies on Python's float behavior for inf/nan
-            append(_to_storage(op(aval, bval), out.dtype))
-
-        out._buffer = memoryview(buf)
-        return out
-
-    __add__ = lambda self, other: self._binary_op(other, operator.add)
-    __mul__ = lambda self, other: self._binary_op(other, operator.mul)
-    __rmul__ = lambda self, other: self._binary_op(other, operator.mul)
-    __sub__ = lambda self, other: self._binary_op(other, operator.sub)
-    __rsub__ = lambda self, other: self._binary_op(other, operator.sub)
-    __truediv__ = lambda self, other: self._binary_op(other, operator.truediv)
-    __rtruediv__ = lambda self, other: self._binary_op(other, lambda a, b: operator.truediv(b, a))
-    __floordiv__ = lambda self, other: self._binary_op(other, operator.floordiv)
-
-    @classmethod
-    def _filled(
-        cls,
-        shape: Sequence[int],
-        value: Any,
-        *,
-        dtype: DTypeLike = dtypes.float32,
-        device: str = "cpu",
-        requires_grad: bool | None = None,
-    ) -> Tensor:
-        inst = cls.__new__(cls)
-        inst.dtype = to_dtype(dtype)
-        inst.shape = tuple(shape)
-        inst.device = device
-        inst.requires_grad = requires_grad
-        inst.grad = None
-
-        storage_val = _to_storage(value, inst.dtype)
-        numel = _prod(shape)
-        inst._buffer = inst._make_buffer([storage_val] * numel)
-        return inst
-
-    def to_numpy(self):
-        import numpy as np
-
-        return np.array(self._to_nested())
-
-    def __repr__(self) -> str:
-        return (
-            f"Tensor(shape={self.shape}, dtype='{self.dtype.name}', "
-            f"device='{self.device}', requires_grad={self.requires_grad}, "
-            f"data={self._to_nested()})"
-        )
-
-    def __str__(self) -> str:
-        nested = self._to_nested()
-        return str(nested if self.shape else nested)
-
-    @staticmethod
-    def _contiguous_index(shape: list, index: list[int]) -> int:
-        """
-        Compute the flat index for a tensor of given shape at multi‐dimensional index.
-        """
-        if len(shape) != len(index):
-            raise IndexError(f"Dimensionality mismatch: shape={shape}, index={index}")
-
-        flat_index = 0
-        stride = 1
-
-        for dim, idx in zip(reversed(shape), reversed(index)):
-            if idx < 0 or idx >= dim:
-                raise IndexError(f"Index out of bounds: {idx} not in [0, {dim})")
-            flat_index += idx * stride
-            stride *= dim
-
-        return flat_index
-
-    def __getitem__(self, idx: list[int] | tuple[int, ...] | int) -> Any:
-        if self.shape == ():
-            raise IndexError(f"Cannot index a constant Tensor: ({self.__repr__()})")
-
-        if not isinstance(idx, (list, tuple, int)):
-            raise IndexError(f"Invalid indexing argument for the tensor with shape({self.shape})")
-
-        if isinstance(idx, int):
-            if len(self.shape) == 1:
-                # Normalize negative indices
-                if idx < 0:
-                    idx += self.shape[0]
-                if idx < 0 or idx >= self.shape[0]:
-                    raise IndexError(
-                        f"Trying to access an element outside the bounds of the Tensor with length : {self.shape[0]}"
-                    )
-                return _from_storage(self._buffer[idx], self.dtype)
-            else:
-                raise NotImplementedError(
-                    "Integer indexing of multi-dimensional tensors not implemented"
-                )
-
-        elif isinstance(idx, (list, tuple)):
-            t_shape = self.shape
-            if len(idx) == len(t_shape):
-                return _from_storage(
-                    self._buffer[Tensor._contiguous_index(list(self.shape), list(idx))],
-                    self.dtype,
-                )
-            else:
-                raise IndexError(
-                    f"Dimensionality mismatch: tensor has {len(t_shape)} dimensions but {len(idx)} indices were provided"
-                )
+        result = Tensor.__new__(Tensor)
+        result.shape = shape
+        result.device = self.device
+        result.requires_grad = self.requires_grad
+        result.grad = None
+        result._ctx = None
+        result._prev = None
+        result.storage = self.storage
+        return result
