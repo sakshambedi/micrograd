@@ -44,19 +44,41 @@ class Tensor:
 
     @classmethod
     def zeros(cls, shape: Sequence[int], **kw) -> Tensor:
-        # return cls._filled(shape, 0, **kw)
-        ...
+        return cls._filled(shape, 0, **kw)
 
     @classmethod
     def ones(cls, shape: Sequence[int], **kw) -> Tensor:
-        # return cls._filled(shape, 1, **kw)
-        ...
+        return cls._filled(shape, 1, **kw)
+
+    @classmethod
+    def _filled(
+        cls,
+        shape: Sequence[int],
+        value: Any,
+        *,
+        dtype: DTypeLike = dtypes.float32,
+        device: str = "cpu",
+        requires_grad: bool | None = None,
+    ) -> Tensor:
+        inst = cls.__new__(cls)
+        inst.storage = Buffer._filled(dtype, _prod(shape), value)
+        inst.shape = tuple(shape)
+        inst.device = device
+        inst.requires_grad = requires_grad
+        inst.grad = None
+        return inst
 
     @property
     def dtype(self) -> DType:
         if self.storage is None:
             raise AttributeError("Tensor with data is not initialized yet!")
         return self.storage.dtype
+
+    @property
+    def buffer(self) -> memoryview:
+        if self.storage is None:
+            raise AttributeError("Tensor with data is not initialized yet!")
+        return self.storage._storage
 
     @staticmethod
     def _infer_shape(seq: Sequence) -> tuple[int, ...]:
@@ -71,17 +93,20 @@ class Tensor:
 
     @staticmethod
     def _flatten_gen(x: Any) -> Generator:
-        if isinstance(x, (list, tuple)):
-            for item in x:
-                yield from Tensor._flatten_gen(item)
-        else:
-            yield x
+        stack = [x]
+        while stack:
+            current = stack.pop()
+            if isinstance(current, (list, tuple)):
+                for item in reversed(current):
+                    stack.append(item)
+            else:
+                yield current
 
     def __repr__(self) -> str:
         nested = self._to_nested()
         return (
-            f"Tensor(shape={self.shape}, "
-            f"device='{self.device}', requires_grad={self.requires_grad}, "
+            f"Tensor(shape={self.shape}, dtype={self.dtype.name},"
+            f"device={self.device}, requires_grad={self.requires_grad}, "
             f"data={nested})"
         )
 
@@ -101,9 +126,9 @@ class Tensor:
         else:
             if self.storage is None:
                 raise AttributeError("Tensor with data is not initialized yet!")
-
-            if self.dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
-                flat = formatted_fp16_buffer(self.storage._storage)  # Convert uint16 -> fp16
+            if self.dtype.fmt == "e":
+                # Always convert FP16 data to Python float using our utility
+                flat = formatted_fp16_buffer(self.storage._storage)
             else:
                 flat = self.storage.to_list()
         return self._nest(flat, list(self.shape))
