@@ -119,7 +119,9 @@ class Tensor:
     @staticmethod
     def T(ten: Tensor) -> Tensor:
         """Transpose the tensor"""
-        if len(ten.shape) <= 2:
+        if len(ten.shape) <= 1:
+            return ten
+        elif len(ten.shape) == 2:
             return ten.transpose(0, 1)
         raise BufferError(
             f"Input tensor with shape({ten.shape}) has len: ({len(ten.shape)})>= 2 for transpose not supported"
