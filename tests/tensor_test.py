@@ -427,8 +427,6 @@ class TestFP16Utils:
 class TestTensorStride:
     def test_stride_1d(self):
         t = Tensor([1, 2, 3, 4])
-        # For 1D, stride is always (1,)
-        assert t._stride
         stride = t._stride
         assert stride == (1,)
 

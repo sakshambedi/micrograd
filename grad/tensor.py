@@ -131,7 +131,7 @@ class Tensor:
         else:
             if self.storage is None:
                 raise AttributeError("Tensor with data is not initialized yet!")
-            if self.dtype.fmt == "e" and ARRAY_E_SUPPORTED:
+            if self.dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
                 flat = formatted_fp16_buffer(self.storage._storage)  # convert FP16 -> Python float
             else:
                 flat = self.storage.to_list()
@@ -151,7 +151,7 @@ class Tensor:
             stride.append(acc)
             acc *= dim
         stride.reverse()
-        return tuple()
+        return tuple(stride)
 
     def buffer_id(self) -> int:
         """Returns the memory address of the underlying storage.
