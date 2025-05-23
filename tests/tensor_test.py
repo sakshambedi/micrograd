@@ -452,4 +452,4 @@ class TestTensorStride:
         t = Tensor([[1, 2, 3], [4, 5, 6]])
         if hasattr(t, "__getitem__"):
             stride = t._stride
-            assert stride == (3,)
+            assert stride == (3, 1)
