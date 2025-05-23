@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import array
 from collections.abc import Generator, Iterable, Sequence
+from itertools import product as iter_product
 from math import prod as _prod
 from typing import Any, Optional, TypeVar, Union
 
@@ -101,7 +102,9 @@ class Tensor:
 
     def view(self, *shape: int) -> Tensor:
         """Return a tensor with the same data but a different shape."""
-        shape_tuple = shape[0] if len(shape) == 1 and isinstance(shape[0], tuple) else shape
+        shape_tuple = (
+            shape[0] if len(shape) == 1 and isinstance(shape[0], tuple) else shape
+        )
         new_size, old_size = _prod(shape_tuple), _prod(self.shape)
 
         if new_size != old_size:
@@ -156,8 +159,6 @@ class Tensor:
         result.storage = self.storage
         result._contiguous = False
         return result
-
-    # ---- Properties and Accessors ----
 
     @property
     def dtype(self) -> DType:
@@ -230,9 +231,8 @@ class Tensor:
         Yields all possible n-dimensional indices for a given shape.
         Example: shape = (2, 3) yields (0,0), (0,1), (0,2), (1,0), (1,1), (1,2)
         """
-        import itertools
 
-        return itertools.product(*(range(s) for s in shape))
+        return iter_product(*(range(s) for s in shape))
 
     @staticmethod
     def _contiguous_tensor(t: Tensor) -> Tensor:
@@ -240,9 +240,10 @@ class Tensor:
         if t._contiguous:
             return t
 
-        out = Tensor.zeros(t.shape, dtype=t.dtype, device=t.device, requires_grad=t.requires_grad)
-        print(f"Out: {out}")
-        for idx in Tensor.nd_indices(t.shape):  # write your own n-D iterator
+        out = Tensor.zeros(
+            t.shape, dtype=t.dtype, device=t.device, requires_grad=t.requires_grad
+        )
+        for idx in Tensor.nd_indices(t.shape):
             out[idx] = t[idx]
         return out
 
@@ -283,7 +284,9 @@ class Tensor:
             if self.storage is None:
                 raise AttributeError("Tensor with data is not initialized yet!")
             if self.dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
-                flat = formatted_fp16_buffer(self.storage._storage)  # convert FP16 -> Python float
+                flat = formatted_fp16_buffer(
+                    self.storage._storage
+                )  # FP16 -> Python float
             else:
                 flat = self.storage.to_list()
         return self._nest(flat, list(self.shape))

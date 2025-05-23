@@ -256,7 +256,12 @@ class TestFloat16:
         assert Tensor._infer_shape(data) == (2, 2, 2)
 
     def test_repr_contains(self):
-        t = Tensor([[1.0, 2.0], [3.0, 4.0]], dtype=dtypes.float32, device="gpu", requires_grad=True)
+        t = Tensor(
+            [[1.0, 2.0], [3.0, 4.0]],
+            dtype=dtypes.float32,
+            device="gpu",
+            requires_grad=True,
+        )
 
         r = repr(t)
         for fragment in (
@@ -316,19 +321,25 @@ class TestFP16Conversions:
 
         # Tolerance depends on magnitude
         tol = 1e-3 if abs(value) > 1e-3 else 1e-6
-        assert abs(value - reconverted) < tol, f"Value {value} converted to {reconverted}"
+        assert (
+            abs(value - reconverted) < tol
+        ), f"Value {value} converted to {reconverted}"
 
     def test_special_values(self):
         """Test conversion of special values: infinities and NaN."""
         # Test positive infinity
         pos_inf_bits = float16_to_uint16(float("inf"))
-        assert pos_inf_bits == 0x7C00, f"Expected 0x7c00 for +inf, got 0x{pos_inf_bits:04x}"
+        assert (
+            pos_inf_bits == 0x7C00
+        ), f"Expected 0x7c00 for +inf, got 0x{pos_inf_bits:04x}"
         assert math.isinf(uint16_to_float16(pos_inf_bits))
         assert uint16_to_float16(pos_inf_bits) > 0
 
         # Test negative infinity
         neg_inf_bits = float16_to_uint16(float("-inf"))
-        assert neg_inf_bits == 0xFC00, f"Expected 0xfc00 for -inf, got 0x{neg_inf_bits:04x}"
+        assert (
+            neg_inf_bits == 0xFC00
+        ), f"Expected 0xfc00 for -inf, got 0x{neg_inf_bits:04x}"
         assert math.isinf(uint16_to_float16(neg_inf_bits))
         assert uint16_to_float16(neg_inf_bits) < 0
 
@@ -344,7 +355,9 @@ class TestFP16Conversions:
         # Maximum normal value
         max_val = 65504.0
         max_bits = float16_to_uint16(max_val)
-        assert max_bits == 0x7BFF, f"Expected 0x7bff for max value, got 0x{max_bits:04x}"
+        assert (
+            max_bits == 0x7BFF
+        ), f"Expected 0x7bff for max value, got 0x{max_bits:04x}"
 
         # Minimum positive normal value
         min_normal = 6.104e-5
