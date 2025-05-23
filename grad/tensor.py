@@ -4,11 +4,11 @@ import array
 from collections.abc import Generator, Iterable, Sequence
 from itertools import product as iter_product
 from math import prod as _prod
-from typing import Any, Optional, TypeVar, Union
+from typing import Any, Optional, TypeVar, overload
 
 from grad.buffer import Buffer
 from grad.dtype import DType, DTypeLike, dtypes
-from grad.utils.fp16 import formatted_fp16_buffer
+from grad.utils.fp16 import formatted_fp16_buffer, uint16_to_float16
 from grad.utils.misc import tensor_stride
 
 ARRAY_E_SUPPORTED = "e" in array.typecodes
@@ -32,11 +32,11 @@ class Tensor:
 
     def __init__(
         self,
-        data: Union[Iterable, int, float, None] = None,
+        data: Iterable | int | float | None = None,
         *,
         dtype: DTypeLike = dtypes.float32,
         device: str = "cpu",
-        requires_grad: Optional[bool] = None,
+        requires_grad: bool | None = None,
     ) -> None:
         self.device = device
         self.requires_grad = requires_grad
@@ -57,8 +57,6 @@ class Tensor:
             self.storage = Buffer(dtype, [data])
 
         self._stride: tuple[int, ...] = tensor_stride(self.shape)
-
-    # ---- Factory Methods ----
 
     @classmethod
     def zeros(cls, shape: Sequence[int], **kw) -> Tensor:
@@ -102,9 +100,7 @@ class Tensor:
 
     def view(self, *shape: int) -> Tensor:
         """Return a tensor with the same data but a different shape."""
-        shape_tuple = (
-            shape[0] if len(shape) == 1 and isinstance(shape[0], tuple) else shape
-        )
+        shape_tuple = shape[0] if len(shape) == 1 and isinstance(shape[0], tuple) else shape
         new_size, old_size = _prod(shape_tuple), _prod(self.shape)
 
         if new_size != old_size:
@@ -142,23 +138,26 @@ class Tensor:
             f"Input tensor with shape({ten.shape}) has len: ({len(ten.shape)})>= 2 for transpose not supported"
         )
 
-    def permute(self): ...  # NOQA: E704
+    @staticmethod
+    def permute(ten: Tensor, *idx: int):
+        """Permute the tensor. Read more: https://docs.pytorch.org/docs/stable/generated/torch.permute.html"""
 
-    def _create_view(
-        self, shape: tuple[int, ...], *, stride: tuple[int, ...] | None = None
-    ) -> Tensor:
-        """Create a new tensor that shares storage with self but has a different shape."""
-        result = Tensor.__new__(Tensor)
-        result.shape = shape
-        result._stride = tensor_stride(shape) if stride is None else stride
-        result.device = self.device
-        result.requires_grad = self.requires_grad
-        result.grad = None
-        result._ctx = None
-        result._prev = None
-        result.storage = self.storage
-        result._contiguous = False
-        return result
+        idx_tup = idx[0] if len(idx) == 1 and isinstance(idx[0], tuple) else idx
+        if len(idx_tup) != len(ten.shape):
+            raise ValueError(
+                f"Number of permutation indices ({len(idx_tup)}) must match tensor dimensions ({len(ten.shape)})"
+            )
+        elif len(idx_tup) != len(set(idx_tup)):
+            raise ValueError(f"Permutation indices contain duplicates: {idx_tup}")
+        elif sorted(list(idx_tup)) != list(range(len(ten.shape))):
+            raise ValueError(
+                f"Invalid permutation indices: {idx_tup}. Must be a permutation of {list(range(len(ten.shape)))}"
+            )
+
+        # ex: (0, 1, 2) -> (2, 0, 1)
+        shape_n = [ten.shape[d] for d in idx_tup]
+        stride_n = [ten.stride()[d] for d in idx_tup]
+        return ten._create_view(tuple(shape_n), stride=tuple(stride_n))
 
     @property
     def dtype(self) -> DType:
@@ -180,12 +179,18 @@ class Tensor:
             return 0
         return id(self.storage._storage)
 
-    def stride(self, dim: Optional[int] = None) -> Union[tuple[int, ...], int]:
+    @overload
+    def stride(self) -> tuple[int, ...]: ...  # noqa : E704
+
+    @overload
+    def stride(self, dim: int) -> int: ...  # noqa : E704
+
+    def stride(self, dim: int | None = None) -> tuple[int, ...] | int:
         """Return the stride of the tensor. If dim is specified, return the stride for that dimension."""
         return self._stride if dim is None else self._stride[dim % len(self.shape)]
 
     # ---- Data Access Methods ----
-    #
+
     offset = lambda self, index: sum(i * s for i, s in zip(index, self._stride))
 
     def __getitem__(self, index):
@@ -196,10 +201,31 @@ class Tensor:
             raise IndexError("Wrong number of indices")
         if self.storage is not None:
             offsetval = self.offset(index)
-            return self.storage[offsetval]
+            val = self.storage[offsetval]
+            if self.dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
+                val = uint16_to_float16(val)
+
+            return val
+
         raise AttributeError("Tensor with a storage has not been initialized yet!")
 
     # ---- Internal Helper Methods ----
+
+    def _create_view(
+        self, shape: tuple[int, ...], *, stride: tuple[int, ...] | None = None
+    ) -> Tensor:
+        """Create a new tensor that shares storage with self but has a different shape."""
+        result = Tensor.__new__(Tensor)
+        result.shape = shape
+        result._stride = tensor_stride(shape) if stride is None else stride
+        result.device = self.device
+        result.requires_grad = self.requires_grad
+        result.grad = None
+        result._ctx = None
+        result._prev = None
+        result.storage = self.storage
+        result._contiguous = False
+        return result
 
     @staticmethod
     def _infer_shape(seq: Sequence) -> tuple[int, ...]:
@@ -240,11 +266,10 @@ class Tensor:
         if t._contiguous:
             return t
 
-        out = Tensor.zeros(
-            t.shape, dtype=t.dtype, device=t.device, requires_grad=t.requires_grad
-        )
+        out = Tensor.zeros(t.shape, dtype=t.dtype, device=t.device, requires_grad=t.requires_grad)
         for idx in Tensor.nd_indices(t.shape):
             out[idx] = t[idx]
+
         return out
 
     def __setitem__(self, idx, value):
@@ -276,24 +301,45 @@ class Tensor:
         nested = self._to_nested()
         return str(nested)
 
+    # def _to_nested(self) -> Any:
+    #     """Convert the flat buffer to a nested list structure matching the tensor's shape."""
+    #     if _prod(self.shape) == 0:
+    #         flat: list[Any] = []
+    #     else:
+    #         if self.storage is None:
+    #             raise AttributeError("Tensor with data is not initialized yet!")
+    #         if self.dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
+    #             flat = formatted_fp16_buffer(self.storage._storage)  # FP16 -> py float
+    #         else:
+    #             flat = self.storage.to_list()
+    #     return self._nest(flat, list(self.shape))
     def _to_nested(self) -> Any:
         """Convert the flat buffer to a nested list structure matching the tensor's shape."""
         if _prod(self.shape) == 0:
-            flat: list[Any] = []
-        else:
-            if self.storage is None:
-                raise AttributeError("Tensor with data is not initialized yet!")
+            if not self.shape:
+                return [] if self.storage and _prod(self.shape) == 0 else None
+
+            return [self._nest([], list(self.shape[1:])) for _ in range(self.shape[0])]
+
+        if self.storage is None:
+            raise AttributeError("Tensor with data is not initialized yet!")
+
+        if self._contiguous:
             if self.dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
-                flat = formatted_fp16_buffer(
-                    self.storage._storage
-                )  # FP16 -> Python float
+                flat = formatted_fp16_buffer(self.storage._storage)  # FP16 -> py float
             else:
                 flat = self.storage.to_list()
-        return self._nest(flat, list(self.shape))
+            return self._nest(flat, list(self.shape))
+
+        flat_ordered_data = []
+        for idx in Tensor.nd_indices(self.shape):
+            flat_ordered_data.append(self[idx])
+
+        return self._nest(flat_ordered_data, list(self.shape))
 
     @staticmethod
     def _nest(flat: list[Any], dims: list[int]) -> Any:
         """Recursively nest a flat list according to the provided dimensions."""
         if not dims:
-            return flat.pop(0)
+            return flat.pop(0) if flat else None
         return [Tensor._nest(flat, dims[1:]) for _ in range(dims[0])]
