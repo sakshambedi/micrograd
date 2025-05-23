@@ -1,21 +1,40 @@
 from __future__ import annotations
 
-from enum import Enum, auto
+
+class Ops:
+    @staticmethod
+    def _to_tensor(x) -> "Tensor":  # type: ignore # noqa : F821
+        from grad.tensor import Tensor
+
+        if not isinstance(x, Tensor):
+            return Tensor(x)
+        return x
+
+    @staticmethod
+    def add(a, b):
+        a = Ops._to_tensor(a)
+        b = Ops._to_tensor(b)
+        return BinaryOps.add(a, b)
+
+    @staticmethod
+    def forward(*args, **kwargs):
+        raise NotImplementedError("Forward must be implemented in child classes")
+
+    @staticmethod
+    def backward(*args, **kwargs):
+        raise NotImplementedError("Backward must be implemented in child classes")
+
+    @staticmethod
+    def apply():
+        pass
 
 
-class Ops(Enum):
-    BUFFER = auto()
-    DEVICE = auto()
+class BinaryOps(Ops):
+    @staticmethod
+    def add(a, b):
+        print("a : ", a)
+        print("b : ", b)
 
 
-# @dataclass
-# class UOp:
-#     op: Ops
-#     dtype: DType  # Store the DType
-#     src: tuple[UOp, ...] | None = None
-#     arg: any | None = None
-#     sz: int | None = None
-
-#     @staticmethod
-#     def new_buffer(device: str, size: int, dtype: DType):
-#         return UOp(Ops.BUFFER, dtype, (UOp(Ops.DEVICE, dtype, arg=device),), sz=size)
+class UnaryOps(Ops):
+    pass
