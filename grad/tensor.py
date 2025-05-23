@@ -131,9 +131,8 @@ class Tensor:
         else:
             if self.storage is None:
                 raise AttributeError("Tensor with data is not initialized yet!")
-            if self.dtype.fmt == "e":
-                # Always convert FP16 data to Python float using our utility
-                flat = formatted_fp16_buffer(self.storage._storage)
+            if self.dtype.fmt == "e" and ARRAY_E_SUPPORTED:
+                flat = formatted_fp16_buffer(self.storage._storage)  # convert FP16 -> Python float
             else:
                 flat = self.storage.to_list()
         return self._nest(flat, list(self.shape))
