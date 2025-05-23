@@ -102,13 +102,16 @@ class Buffer:
         return [dtypes._from_storage(item, self.dtype) for item in self._storage]
 
     @classmethod
-    def _filled(cls, dtype: DTypeLike, num_elem: int, val: DType | int | float) -> "Buffer":
+    def _filled(cls, dtype: DTypeLike, num_elem: int, val: int | float) -> "Buffer":
         out_dtype = to_dtype(dtype)
         valiter = (val for _ in range(num_elem)) if num_elem != 0 else []
         buff = cls.__new__(cls)
         buff.dtype = out_dtype
         buff._storage = Buffer._make_buffer(out_dtype, valiter)
         return buff
+
+    def __getitem__(self, idx: int):
+        return self._storage[idx]
 
     # @staticmethod
     # def _broadcast(t: Tensor, shape, fmt) -> Tensor:

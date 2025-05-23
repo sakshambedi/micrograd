@@ -452,4 +452,30 @@ class TestTensorStride:
         t = Tensor([[1, 2, 3], [4, 5, 6]])
         if hasattr(t, "__getitem__"):
             stride = t._stride
-            assert stride == (3,)
+            assert stride == (3, 1)
+
+
+class TestTensorTranspose:
+    def test_Tensor_T_1d(self):
+        data = [1.0, 2.0, 3.0]
+        t = Tensor(data)
+        tT = Tensor.T(t)
+        # For 1D, should be identity
+        check_tensor_data(tT, data)
+        assert tT.shape == (3,)
+
+    def test_Tensor_T_2d(self):
+        data = [[1.0, 2.0], [3.0, 4.0]]
+        t = Tensor(data)
+        tT = Tensor.T(t)
+        assert t[0, 0] == tT[0, 0]
+        assert t[0, 1] == tT[1, 0]
+        assert t[1, 0] == tT[0, 1]
+        assert t[1, 1] == tT[1, 1]
+        assert tT.shape == (2, 2)
+
+    def test_Tensor_T_3d_raises(self):
+        data = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]
+        t = Tensor(data)
+        with pytest.raises(BufferError):
+            Tensor.T(t)

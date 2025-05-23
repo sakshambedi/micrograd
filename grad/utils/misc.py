@@ -1,13 +1,18 @@
 from __future__ import annotations
 
-import struct
-from typing import Any
 
+def tensor_stride(shape) -> tuple[int, ...]:
+    """
+    O(len(shape)) time, O(1) extra memory.
+    pytorch stride : https://docs.pytorch.org/docs/stable/generated/torch.Tensor.stride.html
+    """
+    if not shape:
+        return ()
 
-def get_val_from_tensor_buffer(tensor: Any, index: int) -> Any:
-    item = tensor._buffer[index]
-    if tensor.dtype.fmt == "e":
-        return struct.unpack("<e", struct.pack("<H", item))[0]
-    elif tensor.dtype.fmt == "?":
-        return bool(item)
-    return item
+    acc = 1
+    stride = []
+    for dim in reversed(shape):
+        stride.append(acc)
+        acc *= dim
+    stride.reverse()
+    return tuple(stride)
