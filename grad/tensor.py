@@ -180,7 +180,7 @@ class Tensor:
             offset = sum(i * s for i, s in zip(index, self._stride))
 
             return self.storage[offset]
-        raise BufferError("Tensor with a storage has not been initialized yet!")
+        raise AttributeError("Tensor with a storage has not been initialized yet!")
 
     # ---- Internal Helper Methods ----
 
