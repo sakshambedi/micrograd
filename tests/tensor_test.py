@@ -113,9 +113,6 @@ class TestTensorInit:
             Tensor("hello")  # type: ignore[arg-type]
 
 
-# --------------------------------------------------------------------------- #
-# Ones / Zeros / empty-size cases
-# --------------------------------------------------------------------------- #
 class TestTensorFactories:
     @pytest.mark.parametrize("shape", [(2, 3), (3, 2), (1,)])
     def test_ones_float(self, shape):
@@ -146,10 +143,10 @@ class TestTensorFactories:
 
 
 class TestFloat16:
-    """Test suite for Float16 tensor operations and conversions."""
+    """Tests for Float16 tensor creation and operations"""
 
     def test_fp16_initialisation(self):
-        """Test creating FP16 tensors from Python lists."""
+        """Input: [1.0, 2.5, -3.0, 0.1]"""
         data = [1.0, 2.5, -3.0, 0.1]
         t = Tensor(data, dtype=dtypes.float16)
 
@@ -159,7 +156,7 @@ class TestFloat16:
         check_tensor_data(t, data)
 
     def test_fp16_ones(self):
-        """Test creating FP16 tensors filled with ones."""
+        """Input: shape=(2,2)"""
         shape = (2, 2)
         t = Tensor.ones(shape, dtype=dtypes.float16)
         assert t.dtype is dtypes.float16
@@ -169,7 +166,7 @@ class TestFloat16:
         check_tensor_data(t, expected)
 
     def test_fp16_zeros(self):
-        """Test creating FP16 tensors filled with zeros."""
+        """Input: shape=(2,2)"""
         shape = (2, 2)
         t = Tensor.zeros(shape, dtype=dtypes.float16)
         assert t.dtype is dtypes.float16
@@ -179,7 +176,7 @@ class TestFloat16:
         check_tensor_data(t, expected)
 
     def test_fp16_roundtrip_conversion(self):
-        """Test roundtrip conversion between float and FP16 representation."""
+        """Tests edge cases including: zeros, normal values, subnormal values, infinities, NaN"""
         test_values = [
             0.0,
             -0.0,  # zeros
@@ -221,8 +218,7 @@ class TestFloat16:
                 ), f"Conversion error too large: {val} -> {reconverted}"
 
     def test_tensor_representation(self):
-        """Test that FP16 tensor values are correctly represented."""
-        # Test a range of values including edge cases
+        """Input: Normal and edge case values for FP16"""
         values = [0.0, 1.0, -1.0, 0.5, -0.5, 65504.0, -65504.0, 6.104e-5]
         t = Tensor(values, dtype=dtypes.float16)
 
@@ -234,7 +230,7 @@ class TestFloat16:
             assert abs(orig - conv) < 1e-3, f"Value mismatch: {orig} vs {conv}"
 
     def test_memoryview_conversion(self):
-        """Test conversion from uint16 memoryview to float values."""
+        """Input: Standard FP16 test values"""
         values = [0.0, 1.0, -1.0, 0.5, -0.5, 65504.0, -65504.0, 6.104e-5]
         uint16_values = [float16_to_uint16(v) for v in values]
 
@@ -256,7 +252,12 @@ class TestFloat16:
         assert Tensor._infer_shape(data) == (2, 2, 2)
 
     def test_repr_contains(self):
-        t = Tensor([[1.0, 2.0], [3.0, 4.0]], dtype=dtypes.float32, device="gpu", requires_grad=True)
+        t = Tensor(
+            [[1.0, 2.0], [3.0, 4.0]],
+            dtype=dtypes.float32,
+            device="gpu",
+            requires_grad=True,
+        )
 
         r = repr(t)
         for fragment in (
@@ -281,12 +282,11 @@ class TestFloat16:
         assert t_default.grad is None
 
 
-# Check if fp16 is natively supported
 ARRAY_E_SUPPORTED = "e" in array.typecodes
 
 
 class TestFP16Conversions:
-    """Test suite for FP16 conversion utilities."""
+    """Tests for float16<->uint16 conversions"""
 
     @pytest.mark.parametrize(
         "value",
@@ -310,7 +310,7 @@ class TestFP16Conversions:
         ],
     )
     def test_normal_value_roundtrip(self, value):
-        """Test roundtrip conversion of normal FP16 values."""
+        """Input: Normal range FP16 values including fractional, max normal, min normal and subnormal"""
         uint16_val = float16_to_uint16(value)
         reconverted = uint16_to_float16(uint16_val)
 
@@ -319,7 +319,7 @@ class TestFP16Conversions:
         assert abs(value - reconverted) < tol, f"Value {value} converted to {reconverted}"
 
     def test_special_values(self):
-        """Test conversion of special values: infinities and NaN."""
+        """Input: Infinity and NaN values"""
         # Test positive infinity
         pos_inf_bits = float16_to_uint16(float("inf"))
         assert pos_inf_bits == 0x7C00, f"Expected 0x7c00 for +inf, got 0x{pos_inf_bits:04x}"
@@ -340,7 +340,7 @@ class TestFP16Conversions:
         assert math.isnan(uint16_to_float16(nan_bits))
 
     def test_edge_values(self):
-        """Test edge case values in FP16 range."""
+        """Input: Max normal (65504.0), min normal (6.104e-5), min subnormal (5.96e-8)"""
         # Maximum normal value
         max_val = 65504.0
         max_bits = float16_to_uint16(max_val)
@@ -362,10 +362,10 @@ class TestFP16Conversions:
 
 
 class TestFP16TensorOperations:
-    """Test suite for operations with FP16 tensors."""
+    """Tests for FP16 tensor math operations"""
 
     def test_basic_fp16_tensor_creation(self):
-        """Test creating basic FP16 tensors with different values."""
+        """Input: Range of FP16 values from 0.0 to min normal"""
         # Test a range of values including edge cases
         values = [0.0, 1.0, -1.0, 0.5, -0.5, 65504.0, -65504.0, 6.104e-5]
         t = Tensor(values, dtype=dtypes.float16)
@@ -382,23 +382,19 @@ class TestFP16TensorOperations:
             assert abs(orig - conv) < 1e-3, f"Value mismatch: {orig} vs {conv}"
 
     def test_fp16_tensor_operations(self):
-        """Test basic operations with FP16 tensors."""
-        # This is a placeholder for future tensor operation tests
-        # Add more tests when operations are implemented
+        """TODO: Implement FP16 tensor operations tests"""
         pass
 
     def test_fp16_tensor_conversion(self):
-        """Test conversion between different dtypes with FP16 tensors."""
-        # This is a placeholder for future tensor conversion tests
-        # Add more tests when conversions are implemented
+        """TODO: Implement FP16 tensor dtype conversion tests"""
         pass
 
 
 class TestFP16Utils:
-    """Test suite for FP16 utility functions."""
+    """Tests for FP16 utilities and memory management"""
 
     def test_memoryview_conversion(self):
-        """Test conversion from uint16 memoryview to float values."""
+        """Input: Standard FP16 test values for memoryview conversion"""
         values = [0.0, 1.0, -1.0, 0.5, -0.5, 65504.0, -65504.0, 6.104e-5]
         uint16_values = [float16_to_uint16(v) for v in values]
 
@@ -414,7 +410,7 @@ class TestFP16Utils:
             assert abs(orig - conv) < 1e-3, f"Conversion error: {orig} vs {conv}"
 
     def test_invalid_format_raises_error(self):
-        """Test that using wrong format for memoryview raises error."""
+        """Input: Array with non-uint16 format"""
         # Create a memoryview with non-uint16 format
         arr = array.array("i", [1, 2, 3])
         view = memoryview(arr)
@@ -479,3 +475,123 @@ class TestTensorTranspose:
         t = Tensor(data)
         with pytest.raises(BufferError):
             Tensor.T(t)
+
+
+class TestTensorPermute:
+    def test_permute_2d_transpose(self):
+        """Input: 2D tensor (3,2) permuted to (2,3)"""
+        data = [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]  # Shape (3, 2)
+        t = Tensor(data, dtype=dtypes.float32)
+        permuted_t = Tensor._contiguous_tensor(Tensor.permute(t, 1, 0))  # Permute to shape (2, 3)
+
+        expected_data = [[1.0, 3.0, 5.0], [2.0, 4.0, 6.0]]  # Transposed data
+        check_tensor_data(permuted_t, expected_data)
+        assert permuted_t.shape == (2, 3)
+        assert permuted_t.stride() == (3, 1)
+        assert t.stride() == (2, 1)
+        assert permuted_t._contiguous
+
+    def test_permute_3d_swap_0_1(self):
+        """Input: 3D tensor (2,2,2) permuted to swap dims 0,1"""
+        data = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]  # Shape (2, 2, 2)
+        t = Tensor(data, dtype=dtypes.int32)
+        # Permute (0, 1, 2) -> (1, 0, 2)
+        permuted_t = Tensor.permute(t, 1, 0, 2)
+
+        expected_data = [[[1, 2], [5, 6]], [[3, 4], [7, 8]]]  # Shape (2, 2, 2)
+        check_tensor_data(permuted_t, expected_data)
+        assert permuted_t.shape == (2, 2, 2)
+        assert permuted_t.stride() == (2, 4, 1)  # Check calculated stride
+
+    def test_permute_3d_swap_0_2(self):
+        """Input: 3D tensor (2,2,2) permuted to swap dims 0,2"""
+        data = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]  # Shape (2, 2, 2)
+        t = Tensor(data, dtype=dtypes.int32)
+        # Permute (0, 1, 2) -> (2, 1, 0)
+        permuted_t = Tensor.permute(t, 2, 1, 0)
+
+        expected_data = [[[1, 5], [3, 7]], [[2, 6], [4, 8]]]  # Shape (2, 2, 2)
+        check_tensor_data(permuted_t, expected_data)
+        assert permuted_t.shape == (2, 2, 2)
+        assert permuted_t.stride() == (1, 2, 4)
+
+    def test_permute_3d_cycle(self):
+        """Input: 3D tensor (2,2,2) with cyclic permutation (0,1,2)->(1,2,0)"""
+        data = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]  # Shape (2, 2, 2)
+        t = Tensor(data, dtype=dtypes.int32)
+        # Permute (0, 1, 2) -> (1, 2, 0)
+        permuted_t = Tensor.permute(t, 1, 2, 0)
+
+        # Manually construct expected data based on index mapping: (i, j, k) -> (j, k, i)
+        # t[0, 0, 0] -> t_perm[0, 0, 0]
+        # t[0, 0, 1] -> t_perm[0, 1, 0]
+        # t[0, 1, 0] -> t_perm[1, 0, 0]
+        # t[0, 1, 1] -> t_perm[1, 1, 0]
+        # t[1, 0, 0] -> t_perm[0, 0, 1]
+        # t[1, 0, 1] -> t_perm[0, 1, 1]
+        # t[1, 1, 0] -> t_perm[1, 0, 1]
+        # t[1, 1, 1] -> t_perm[1, 1, 1]
+        expected_data = [[[1, 5], [2, 6]], [[3, 7], [4, 8]]]  # Shape (2, 2, 2)
+        check_tensor_data(permuted_t, expected_data)
+        assert permuted_t.shape == (2, 2, 2)
+        assert permuted_t.stride() == (2, 1, 4)  # Check calculated stride
+
+    def test_permute_identity(self):
+        """Input: 2D tensor (2,2) with identity permutation"""
+        data = [[1.0, 2.0], [3.0, 4.0]]  # Shape (2, 2)
+        t = Tensor(data, dtype=dtypes.float32)
+        permuted_t = Tensor.permute(t, 0, 1)  # Permute to (0, 1)
+
+        # Should be a view but logically identical to the original
+        check_tensor_data(permuted_t, data)
+        assert permuted_t.shape == (2, 2)
+        assert permuted_t.stride() == (2, 1)  # Should have the same stride as original contiguous
+        assert not permuted_t._contiguous  # Views are marked non-contiguous by default
+
+    def test_permute_scalar(self):
+        """Input: Scalar tensor (shape=())"""
+        t = Tensor(5.0)  # Shape ()
+        permuted_t = Tensor.permute(t)  # No indices expected for scalar
+
+        check_tensor_data(permuted_t, 5.0)
+        assert permuted_t.shape == ()
+        assert permuted_t.stride() == ()
+        assert not permuted_t._contiguous
+
+    def test_permute_1d(self):
+        """Input: 1D tensor of length 3"""
+        data = [1.0, 2.0, 3.0]
+        t = Tensor(data)
+        permuted_t = Tensor.permute(t, 0)
+
+        check_tensor_data(permuted_t, data)
+        assert permuted_t.shape == (3,)
+        assert permuted_t.stride() == (1,)
+
+        assert not permuted_t._contiguous
+
+    def test_permute_invalid_num_indices(self):
+        """Input: 2D tensor with wrong number of permutation indices"""
+        data = [[1.0, 2.0], [3.0, 4.0]]
+        t = Tensor(data)
+        with pytest.raises(ValueError):
+            Tensor.permute(t, 0)
+        with pytest.raises(ValueError):
+            Tensor.permute(t, 0, 1, 2)
+
+    def test_permute_invalid_index_value(self):
+        """Input: 3D tensor with out-of-range indices"""
+        data = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]  # Shape (2, 2, 2), dimensions 0, 1, 2
+        t = Tensor(data)
+        with pytest.raises(ValueError):
+            Tensor.permute(t, 0, 1, 3)
+        with pytest.raises(ValueError):
+            Tensor.permute(t, -1, 1, 0)
+
+    def test_permute_non_permutation(self):
+        """Input: 3D tensor with duplicate indices"""
+
+        data = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]  # Shape (2, 2, 2)
+        t = Tensor(data)
+        with pytest.raises(ValueError):
+            Tensor.permute(t, 0, 0, 1)  # duplicate index

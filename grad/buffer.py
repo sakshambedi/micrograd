@@ -56,7 +56,6 @@ _buffer_pool = BufferPool()  # singleton instance
 
 class Buffer:
     __slots__ = ("dtype", "_storage")
-    _buffer_pool = {}
 
     def __init__(self, dtype: DTypeLike, iterable: Iterable[Any]):
         self.dtype: DType = to_dtype(dtype)
@@ -112,6 +111,10 @@ class Buffer:
 
     def __getitem__(self, idx: int):
         return self._storage[idx]
+
+    def __setitem__(self, idx, value):
+        storage_value = dtypes._to_storage(value, self.dtype)
+        self._storage[idx] = storage_value
 
     # @staticmethod
     # def _broadcast(t: Tensor, shape, fmt) -> Tensor:
