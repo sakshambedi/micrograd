@@ -422,3 +422,36 @@ class TestFP16Utils:
         # Should raise TypeError for wrong format
         with pytest.raises(TypeError):
             formatted_fp16_buffer(view)
+
+
+class TestTensorStride:
+    def test_stride_1d(self):
+        t = Tensor([1, 2, 3, 4])
+        # For 1D, stride is always (1,)
+        assert t._stride
+        stride = t._stride
+        assert stride == (1,)
+
+    def test_stride_2d(self):
+        t = Tensor([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]])
+        assert t.shape == (3, 4) and t._stride == (4, 1)
+
+        t = Tensor([[1, 2, 3], [4, 5, 6]])
+        assert t._stride == (3, 1)
+
+    def test_stride_3d(self):
+        t = Tensor([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+        stride = t._stride
+        assert stride == (4, 2, 1)
+
+    def test_stride_scalar(self):
+        t = Tensor(42)
+
+        stride = t._stride
+        assert stride == ()
+
+    def test_stride_non_contiguous(self):
+        t = Tensor([[1, 2, 3], [4, 5, 6]])
+        if hasattr(t, "__getitem__"):
+            stride = t._stride
+            assert stride == (3,)
