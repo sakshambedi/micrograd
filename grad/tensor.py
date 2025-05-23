@@ -17,7 +17,17 @@ T = TypeVar("T", bound="Tensor")
 class Tensor:
     """Tiny, NumPy‑like dense tensor backed by a contiguous buffer."""
 
-    __slots__ = ("shape", "device", "requires_grad", "grad", "storage", "_ctx", "_prev", "_stride")
+    __slots__ = (
+        "shape",
+        "device",
+        "requires_grad",
+        "grad",
+        "storage",
+        "_ctx",
+        "_prev",
+        "_stride",
+        "_contiguous",
+    )
 
     def __init__(
         self,
@@ -33,6 +43,7 @@ class Tensor:
         self.storage: Optional[Buffer] = None
         self._ctx = None
         self._prev = None
+        self._contiguous: bool = True
 
         if data is None:
             self.shape: tuple[int, ...] = ()
@@ -83,6 +94,7 @@ class Tensor:
         inst.grad = None
         inst._ctx = None
         inst._prev = None
+        inst._contiguous = True
         return inst
 
     # ---- Shape Manipulation Methods ----
@@ -142,6 +154,7 @@ class Tensor:
         result._ctx = None
         result._prev = None
         result.storage = self.storage
+        result._contiguous = False
         return result
 
     # ---- Properties and Accessors ----
@@ -171,6 +184,8 @@ class Tensor:
         return self._stride if dim is None else self._stride[dim % len(self.shape)]
 
     # ---- Data Access Methods ----
+    #
+    offset = lambda self, index: sum(i * s for i, s in zip(index, self._stride))
 
     def __getitem__(self, index):
         """Access tensor data by index."""
@@ -179,9 +194,8 @@ class Tensor:
         if len(index) != len(self.shape):
             raise IndexError("Wrong number of indices")
         if self.storage is not None:
-            offset = sum(i * s for i, s in zip(index, self._stride))
-
-            return self.storage[offset]
+            offsetval = self.offset(index)
+            return self.storage[offsetval]
         raise AttributeError("Tensor with a storage has not been initialized yet!")
 
     # ---- Internal Helper Methods ----
@@ -210,15 +224,50 @@ class Tensor:
             else:
                 yield current
 
-    # ---- String Representation Methods ----
+    @staticmethod
+    def nd_indices(shape):
+        """
+        Yields all possible n-dimensional indices for a given shape.
+        Example: shape = (2, 3) yields (0,0), (0,1), (0,2), (1,0), (1,1), (1,2)
+        """
+        import itertools
 
+        return itertools.product(*(range(s) for s in shape))
+
+    @staticmethod
+    def _contiguous_tensor(t: Tensor) -> Tensor:
+        """Make the cheap view/permuate to a buffer on device"""
+        if t._contiguous:
+            return t
+
+        out = Tensor.zeros(t.shape, dtype=t.dtype, device=t.device, requires_grad=t.requires_grad)
+        print(f"Out: {out}")
+        for idx in Tensor.nd_indices(t.shape):  # write your own n-D iterator
+            out[idx] = t[idx]
+        return out
+
+    def __setitem__(self, idx, value):
+        """Standard function for setting values by indexing"""
+        if not isinstance(idx, tuple):
+            idx = (idx,)  # incase of 1d tensor
+        if len(idx) != len(self.shape):
+            raise IndexError(
+                f"Indexing a tensor with incorrect dimension. Tensor with shape: ({self.shape})"
+            )
+        if self.storage is None:
+            raise AttributeError("Tensor with a storage has not been initialized yet!")
+
+        offsetval = self.offset(idx)
+        self.storage[offsetval] = value
+
+    # ---- String Representation Methods ----
     def __repr__(self) -> str:
-        """Return a string representation of the tensor."""
+        """Return a string representation of the tensor"""
         nested = self._to_nested()
         return (
             f"Tensor(shape={self.shape}, dtype={self.dtype.name},"
             f"device={self.device}, requires_grad={self.requires_grad}, "
-            f"data={nested})"
+            f"data={nested}), contiguous={self._contiguous}"
         )
 
     def __str__(self) -> str:
