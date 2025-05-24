@@ -26,34 +26,23 @@ class Ops:
         b = Ops._to_tensor(b)
         return BinaryOps.add(a, b)
 
-    @staticmethod
-    def forward(*args, **kwargs):
-        raise NotImplementedError("Forward must be implemented in child classes")
-
-    @staticmethod
-    def backward(*args, **kwargs):
-        raise NotImplementedError("Backward must be implemented in child classes")
-
-    @staticmethod
-    def apply():
-        pass
-
 
 class BinaryOps(Ops):
     import operator
 
     @staticmethod
     def _elementwise_op(a, b, op_func):
-        Tensor = get_tensor_class()
-        result_shape = a.shape
+        # Tensor = get_tensor_class()
+        # result_shape = a.shape
 
-        result = Tensor.zeros(result_shape, dtype=a.dtype)
-        if a.shape == b.shape and a._contiguous and b._contiguous:
-            # Use itertools to apply operation directly on flattened buffers
-            for i, (x, y) in enumerate(zip(a.storage, b.storage)):
-                result.storage[i] = op_func(x, y)
+        # result = Tensor.zeros(result_shape, dtype=a.dtype)
+        # if a.shape == b.shape and a._contiguous and b._contiguous:
+        #     # Use itertools to apply operation directly on flattened buffers
+        #     for i, (x, y) in enumerate(zip(a.storage, b.storage)):
+        #         result.storage[i] = op_func(x, y)
 
-        return result
+        # return result
+        pass
 
     @staticmethod
     def add(a, b):

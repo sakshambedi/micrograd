@@ -6,6 +6,7 @@ from itertools import product as iter_product
 from math import prod as _prod
 from typing import Any, Optional, TypeVar, overload
 
+from grad.autograd.function import Function
 from grad.buffer import Buffer
 from grad.dtype import DType, DTypeLike, dtypes
 from grad.utils.fp16 import formatted_fp16_buffer, uint16_to_float16
@@ -24,8 +25,7 @@ class Tensor:
         "requires_grad",
         "grad",
         "storage",
-        "_ctx",
-        "_prev",
+        "grad_fn",
         "_stride",
         "_contiguous",
     )
@@ -42,8 +42,9 @@ class Tensor:
         self.requires_grad = requires_grad
         self.grad: Optional[Tensor] = None
         self.storage: Optional[Buffer] = None
-        self._ctx = None
-        self._prev = None
+        self.grad_fn: Optional[Function] = None
+        # self._ctx = None
+        # self._prev = None
         self._contiguous: bool = True
 
         if data is None:
@@ -69,32 +70,19 @@ class Tensor:
         return cls._filled(shape, 1, **kw)
 
     @classmethod
+    def arange(cls, range: int, **kw) -> Tensor:
+        """Pytroch arange like function."""
+        ...
+
+    @classmethod
+    def randn(cls, range: int, **kw) -> Tensor:
+        """Pytroch random n number like function."""
+        ...
+
+    @classmethod
     def full(cls, shape: Sequence[int], fill_value: Any, **kw) -> Tensor:
         """Create a tensor filled with the specified value."""
         return cls._filled(shape, fill_value, **kw)
-
-    @classmethod
-    def _filled(
-        cls,
-        shape: Sequence[int],
-        value: Any,
-        *,
-        dtype: DTypeLike = dtypes.float32,
-        device: str = "cpu",
-        requires_grad: Optional[bool] = None,
-    ) -> Tensor:
-        """Internal method for creating tensors filled with a value."""
-        inst = cls.__new__(cls)
-        inst.storage = Buffer._filled(dtype, _prod(shape), value)
-        inst.shape = tuple(shape)
-        inst._stride = tensor_stride(inst.shape)
-        inst.device = device
-        inst.requires_grad = requires_grad
-        inst.grad = None
-        inst._ctx = None
-        inst._prev = None
-        inst._contiguous = True
-        return inst
 
     # ---- Shape Manipulation Methods ----
 
@@ -189,7 +177,7 @@ class Tensor:
         """Return the stride of the tensor. If dim is specified, return the stride for that dimension."""
         return self._stride if dim is None else self._stride[dim % len(self.shape)]
 
-    # ---- Data Access Methods ----
+    # ---- Default override fuctions ----
 
     offset = lambda self, index: sum(i * s for i, s in zip(index, self._stride))
 
@@ -209,7 +197,58 @@ class Tensor:
 
         raise AttributeError("Tensor with a storage has not been initialized yet!")
 
+    def __setitem__(self, idx, value):
+        """Standard function for setting values by indexing"""
+        if not isinstance(idx, tuple):
+            idx = (idx,)  # incase of 1d tensor
+        if len(idx) != len(self.shape):
+            raise IndexError(
+                f"Indexing a tensor with incorrect dimension. Tensor with shape: ({self.shape})"
+            )
+        if self.storage is None:
+            raise AttributeError("Tensor with a storage has not been initialized yet!")
+
+        offsetval = self.offset(idx)
+        self.storage[offsetval] = value
+
+    def __repr__(self) -> str:
+        """Return a string representation of the tensor"""
+        nested = self._to_nested()
+        return (
+            f"Tensor(shape={self.shape}, dtype={self.dtype.name},"
+            f"device={self.device}, requires_grad={self.requires_grad}, "
+            f"data={nested}), contiguous={self._contiguous}"
+        )
+
+    def __str__(self) -> str:
+        """Return a string representation of the tensor data."""
+        nested = self._to_nested()
+        return str(nested)
+
     # ---- Internal Helper Methods ----
+    @classmethod
+    def _filled(
+        cls,
+        shape: Sequence[int],
+        value: Any,
+        *,
+        dtype: DTypeLike = dtypes.float32,
+        device: str = "cpu",
+        requires_grad: Optional[bool] = None,
+    ) -> Tensor:
+        """Internal method for creating tensors filled with a value."""
+        inst = cls.__new__(cls)
+        inst.storage = Buffer._filled(dtype, _prod(shape), value)
+        inst.shape = tuple(shape)
+        inst._stride = tensor_stride(inst.shape)
+        inst.device = device
+        inst.requires_grad = requires_grad
+        inst.grad = None
+        # inst._ctx = None
+        inst.grad_fn = None
+        # inst._prev = None
+        inst._contiguous = True
+        return inst
 
     def _create_view(
         self, shape: tuple[int, ...], *, stride: tuple[int, ...] | None = None
@@ -221,8 +260,9 @@ class Tensor:
         result.device = self.device
         result.requires_grad = self.requires_grad
         result.grad = None
-        result._ctx = None
-        result._prev = None
+        result.grad_fn = None
+        # result._ctx = None
+        # result._prev = None
         result.storage = self.storage
         result._contiguous = False
         return result
@@ -252,7 +292,7 @@ class Tensor:
                 yield current
 
     @staticmethod
-    def nd_indices(shape):
+    def _nd_indices(shape):
         """
         Yields all possible n-dimensional indices for a given shape.
         Example: shape = (2, 3) yields (0,0), (0,1), (0,2), (1,0), (1,1), (1,2)
@@ -267,39 +307,10 @@ class Tensor:
             return t
 
         out = Tensor.zeros(t.shape, dtype=t.dtype, device=t.device, requires_grad=t.requires_grad)
-        for idx in Tensor.nd_indices(t.shape):
+        for idx in Tensor._nd_indices(t.shape):
             out[idx] = t[idx]
 
         return out
-
-    def __setitem__(self, idx, value):
-        """Standard function for setting values by indexing"""
-        if not isinstance(idx, tuple):
-            idx = (idx,)  # incase of 1d tensor
-        if len(idx) != len(self.shape):
-            raise IndexError(
-                f"Indexing a tensor with incorrect dimension. Tensor with shape: ({self.shape})"
-            )
-        if self.storage is None:
-            raise AttributeError("Tensor with a storage has not been initialized yet!")
-
-        offsetval = self.offset(idx)
-        self.storage[offsetval] = value
-
-    # ---- String Representation Methods ----
-    def __repr__(self) -> str:
-        """Return a string representation of the tensor"""
-        nested = self._to_nested()
-        return (
-            f"Tensor(shape={self.shape}, dtype={self.dtype.name},"
-            f"device={self.device}, requires_grad={self.requires_grad}, "
-            f"data={nested}), contiguous={self._contiguous}"
-        )
-
-    def __str__(self) -> str:
-        """Return a string representation of the tensor data."""
-        nested = self._to_nested()
-        return str(nested)
 
     # def _to_nested(self) -> Any:
     #     """Convert the flat buffer to a nested list structure matching the tensor's shape."""
@@ -332,7 +343,7 @@ class Tensor:
             return self._nest(flat, list(self.shape))
 
         flat_ordered_data = []
-        for idx in Tensor.nd_indices(self.shape):
+        for idx in Tensor._nd_indices(self.shape):
             flat_ordered_data.append(self[idx])
 
         return self._nest(flat_ordered_data, list(self.shape))
