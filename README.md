@@ -43,8 +43,8 @@ As of now, `Micro-Grad` supports:
   - Addition (`+`)
   - Multiplication (`*`)
   - Subtraction (`-`)
-  - True Division (`/`)
-  - Floor Division (`//`)
+  - Division (`/`)
+  - Power operations (`**`)
 - **Operator overloading:**
   - These operations can be used directly with Python's arithmetic operators
   - Reverse operations (`__rmul__`, `__rtruediv__`, etc.) for using tensors with regular Python values
@@ -57,6 +57,13 @@ As of now, `Micro-Grad` supports:
 - **Indexing:**
   - Accessing elements using standard indexing: `tensor[0]` for 1D tensors
   - Multi-dimensional indexing: `tensor[0, 1]` for 2D tensors
+- **Shape manipulation:**
+  - `view(*shape)` / `reshape(*shape)` for changing tensor shapes
+  - `transpose(dim0, dim1)` for swapping dimensions
+  - `Tensor.T(tensor)` static method for 2D tensor transpose
+  - `Tensor.permute(tensor, *indices)` for arbitrary dimension reordering
+- **Stride manipulation:**
+  - Direct access to tensor strides via `stride()` method
 - **Conversion:**
   - `to_numpy()` method for NumPy array conversion
   - String representation via `__repr__` and `__str__` methods
@@ -67,6 +74,8 @@ As of now, `Micro-Grad` supports:
   - Tensors store data internally using Python's `memoryview` backed by `array.array`
   - Special handling for data types like `float16` when not natively supported
   - Efficient conversion between storage format and Python types
+  - Support for non-contiguous tensors through advanced stride handling
+  - Buffer access through `buffer` and `buffer_id` methods
 
 ### Edge Cases
 
@@ -76,11 +85,16 @@ As of now, `Micro-Grad` supports:
 - **Zero-Size Tensor Handling:**
   - Operations involving tensors with zero-sized dimensions follow NumPy's behavior
 
-### Automatic Differentiation (Foundation)
+### Automatic Differentiation
 
 - **`requires_grad` attribute for tracking operations**
 - **`grad` attribute for storing gradients**
 - **Basic propagation of gradient requirements through operations**
+- **Function class for autograd operations:**
+  - Implemented operations with forward pass (Add, Sub, Mul, Div, Pow)
+  - Gradient function structure with backward method
+  - Context saving mechanism for backpropagation
+- **Thread-local autograd state management**
 
 ## Test Results
 
@@ -102,12 +116,17 @@ tests/tensor_test.py ......................            [100%]
 ## Project Structure
 
 ```
-tinygrad-homemade/
+micrograd/
 ├── grad/
 │   ├── tensor.py         # Core tensor implementation
 │   ├── dtype.py          # Data type definitions and utilities
+│   ├── buffer.py         # Buffer management implementation
+│   ├── autograd/
+│   │   ├── function.py   # Base Function class for autograd
+│   │   └── ops.py        # Implementations of operations
 │   └── utils/
-│       └── fp16.py       # Utilities for float16 handling
+│       ├── fp16.py       # Utilities for float16 handling
+│       └── misc.py       # Miscellaneous helper functions
 ├── tests/
 │   ├── binary_ops_test.py # Tests for binary operations
 │   └── tensor_test.py     # Basic tensor functionality tests
@@ -153,6 +172,19 @@ tinygrad-homemade/
    # Indexing
    print(d[0, 1])  # 2.0
 
+   # Shape manipulation
+   f = d.view(4)
+   print(f)  # [1.0, 2.0, 3.0, 4.0]
+   
+   # Transpose
+   g = Tensor.T(d)
+   print(g)  # [[1.0, 3.0], [2.0, 4.0]]
+   
+   # Permuting dimensions (for higher-dimensional tensors)
+   h = Tensor([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+   i = Tensor.permute(h, 2, 0, 1)
+   print(i.shape)  # (2, 2, 2)
+
    # Converting to NumPy
    numpy_array = d.to_numpy()
    print(type(numpy_array))  # <class 'numpy.ndarray'>
@@ -162,6 +194,11 @@ tinygrad-homemade/
    zeros = Tensor.zeros((2, 2))
    print(ones)  # [[1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]
    print(zeros)  # [[0.0, 0.0], [0.0, 0.0]]
+   
+   # Automatic differentiation setup
+   j = Tensor([1, 2, 3], requires_grad=True)
+   k = j * j
+   print(k)  # [1.0, 4.0, 9.0]
    ```
 
 ## Future Plans
@@ -170,21 +207,24 @@ tinygrad-homemade/
 
 - **More Operations:**
   - Matrix multiplication
-  - Reshaping and transposing
   - Reduction operations (sum, mean, max)
-  - Element-wise operations (pow, exp, log)
+  - Element-wise operations (exp, log, sin, cos)
 - **Advanced Broadcasting:**
   - Full broadcasting support for tensors of different shapes
+- **Autograd improvements:**
+  - Complete backward pass implementations for all operations
+  - Gradient accumulation
 
 ### Medium-term Goals
 
 - **Automatic Differentiation Engine:**
-  - Implement `_backward()` methods for operations
-  - Build a simple computational graph
-  - Implement the chain rule for gradient calculation
+  - Enhance the computational graph
+  - Support for higher-order derivatives
+  - More efficient gradient computation
 - **Neural Network Components:**
   - Activation functions (ReLU, Sigmoid, Tanh)
-  - Basic optimizers (SGD)
+  - Basic optimizers (SGD, Adam)
+  - Loss functions (MSE, Cross-Entropy)
 
 ### Long-term Goals
 

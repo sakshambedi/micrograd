@@ -2,18 +2,16 @@ from __future__ import annotations
 
 import array
 from collections.abc import Generator, Iterable, Sequence
-from itertools import product as iter_product
 from math import prod as _prod
-from typing import Any, Optional, TypeVar, overload
+from typing import Any, Optional, overload
 
 from grad.autograd.function import Function
 from grad.buffer import Buffer
 from grad.dtype import DType, DTypeLike, dtypes
 from grad.utils.fp16 import formatted_fp16_buffer, uint16_to_float16
-from grad.utils.misc import tensor_stride
+from grad.utils.misc import _nd_indices, tensor_stride
 
 ARRAY_E_SUPPORTED = "e" in array.typecodes
-T = TypeVar("T", bound="Tensor")
 
 
 class Tensor:
@@ -28,6 +26,7 @@ class Tensor:
         "grad_fn",
         "_stride",
         "_contiguous",
+        "base_offset",
     )
 
     def __init__(
@@ -43,9 +42,8 @@ class Tensor:
         self.grad: Optional[Tensor] = None
         self.storage: Optional[Buffer] = None
         self.grad_fn: Optional[Function] = None
-        # self._ctx = None
-        # self._prev = None
         self._contiguous: bool = True
+        self.base_offset: int = 0
 
         if data is None:
             self.shape: tuple[int, ...] = ()
@@ -127,24 +125,23 @@ class Tensor:
         )
 
     @staticmethod
-    def permute(ten: Tensor, *idx: int):
+    def permute(ten: Tensor, *idx: int) -> Tensor:
         """Permute the tensor. Read more: https://docs.pytorch.org/docs/stable/generated/torch.permute.html"""
-
-        idx_tup = idx[0] if len(idx) == 1 and isinstance(idx[0], tuple) else idx
-        if len(idx_tup) != len(ten.shape):
+        idx_tup: tuple[int, ...] = idx[0] if len(idx) == 1 and isinstance(idx[0], tuple) else idx
+        if len(idx) != len(ten.shape):
             raise ValueError(
-                f"Number of permutation indices ({len(idx_tup)}) must match tensor dimensions ({len(ten.shape)})"
+                f"Number of permutation indices ({len(idx)}) must match tensor dimensions ({len(ten.shape)})"
             )
-        elif len(idx_tup) != len(set(idx_tup)):
-            raise ValueError(f"Permutation indices contain duplicates: {idx_tup}")
-        elif sorted(list(idx_tup)) != list(range(len(ten.shape))):
+        if len(set(idx)) != len(idx):
+            raise ValueError(f"Permutation indices contain duplicates: {idx}")
+        if sorted(idx) != list(range(len(ten.shape))):
             raise ValueError(
-                f"Invalid permutation indices: {idx_tup}. Must be a permutation of {list(range(len(ten.shape)))}"
+                f"Invalid permutation indices: {idx}. Must be a permutation of {list(range(len(ten.shape)))}"
             )
 
-        # ex: (0, 1, 2) -> (2, 0, 1)
+        # apply permutation
         shape_n = [ten.shape[d] for d in idx_tup]
-        stride_n = [ten.stride()[d] for d in idx_tup]
+        stride_n = [ten.stride(d) for d in idx_tup]
         return ten._create_view(tuple(shape_n), stride=tuple(stride_n))
 
     @property
@@ -179,7 +176,35 @@ class Tensor:
 
     # ---- Default override fuctions ----
 
-    offset = lambda self, index: sum(i * s for i, s in zip(index, self._stride))
+    def __add__(self, other):
+        from grad.autograd.ops import Add
+
+        return Add.apply(self, other)
+
+    def __sub__(self, other):
+        from grad.autograd.ops import Sub
+
+        return Sub.apply(self, other)
+
+    def __mul__(self, other):
+        from grad.autograd.ops import Mul
+
+        return Mul.apply(self, other)
+
+    def __truediv__(self, other):
+        from grad.autograd.ops import Div
+
+        return Div.apply(self, other)
+
+    def __pow__(self, other):
+        from grad.autograd.ops import Pow
+
+        return Pow.apply(self, other)
+
+    def __neg__(self): ...  # noqa : E704
+
+    def _offset(self, index):
+        return self.base_offset + sum(i * s for i, s in zip(index, self._stride))
 
     def __getitem__(self, index):
         """Access tensor data by index."""
@@ -188,7 +213,7 @@ class Tensor:
         if len(index) != len(self.shape):
             raise IndexError("Wrong number of indices")
         if self.storage is not None:
-            offsetval = self.offset(index)
+            offsetval = self._offset(index)
             val = self.storage[offsetval]
             if self.dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
                 val = uint16_to_float16(val)
@@ -196,6 +221,13 @@ class Tensor:
             return val
 
         raise AttributeError("Tensor with a storage has not been initialized yet!")
+
+    def to_numpy(self):
+        import numpy as np
+
+        size = int(np.prod(self.shape))
+        arr = np.array(self.buffer[:size], dtype=self.dtype.fmt)
+        return arr.reshape(self.shape)
 
     def __setitem__(self, idx, value):
         """Standard function for setting values by indexing"""
@@ -208,7 +240,7 @@ class Tensor:
         if self.storage is None:
             raise AttributeError("Tensor with a storage has not been initialized yet!")
 
-        offsetval = self.offset(idx)
+        offsetval = self._offset(index=idx)
         self.storage[offsetval] = value
 
     def __repr__(self) -> str:
@@ -228,7 +260,7 @@ class Tensor:
     # ---- Internal Helper Methods ----
     @classmethod
     def _filled(
-        cls,
+        cls: type[Tensor],
         shape: Sequence[int],
         value: Any,
         *,
@@ -237,21 +269,24 @@ class Tensor:
         requires_grad: Optional[bool] = None,
     ) -> Tensor:
         """Internal method for creating tensors filled with a value."""
-        inst = cls.__new__(cls)
+        inst: Tensor = cls.__new__(cls)
         inst.storage = Buffer._filled(dtype, _prod(shape), value)
         inst.shape = tuple(shape)
         inst._stride = tensor_stride(inst.shape)
         inst.device = device
         inst.requires_grad = requires_grad
         inst.grad = None
-        # inst._ctx = None
         inst.grad_fn = None
-        # inst._prev = None
         inst._contiguous = True
+        inst.base_offset = 0
         return inst
 
     def _create_view(
-        self, shape: tuple[int, ...], *, stride: tuple[int, ...] | None = None
+        self,
+        shape: tuple[int, ...],
+        *,
+        stride: tuple[int, ...] | None = None,
+        base_offset: int | None = None,
     ) -> Tensor:
         """Create a new tensor that shares storage with self but has a different shape."""
         result = Tensor.__new__(Tensor)
@@ -261,10 +296,9 @@ class Tensor:
         result.requires_grad = self.requires_grad
         result.grad = None
         result.grad_fn = None
-        # result._ctx = None
-        # result._prev = None
         result.storage = self.storage
         result._contiguous = False
+        result.base_offset = 0 if base_offset is None else base_offset
         return result
 
     @staticmethod
@@ -292,38 +326,17 @@ class Tensor:
                 yield current
 
     @staticmethod
-    def _nd_indices(shape):
-        """
-        Yields all possible n-dimensional indices for a given shape.
-        Example: shape = (2, 3) yields (0,0), (0,1), (0,2), (1,0), (1,1), (1,2)
-        """
-
-        return iter_product(*(range(s) for s in shape))
-
-    @staticmethod
     def _contiguous_tensor(t: Tensor) -> Tensor:
         """Make the cheap view/permuate to a buffer on device"""
         if t._contiguous:
             return t
 
         out = Tensor.zeros(t.shape, dtype=t.dtype, device=t.device, requires_grad=t.requires_grad)
-        for idx in Tensor._nd_indices(t.shape):
+        for idx in _nd_indices(t.shape):
             out[idx] = t[idx]
 
         return out
 
-    # def _to_nested(self) -> Any:
-    #     """Convert the flat buffer to a nested list structure matching the tensor's shape."""
-    #     if _prod(self.shape) == 0:
-    #         flat: list[Any] = []
-    #     else:
-    #         if self.storage is None:
-    #             raise AttributeError("Tensor with data is not initialized yet!")
-    #         if self.dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
-    #             flat = formatted_fp16_buffer(self.storage._storage)  # FP16 -> py float
-    #         else:
-    #             flat = self.storage.to_list()
-    #     return self._nest(flat, list(self.shape))
     def _to_nested(self) -> Any:
         """Convert the flat buffer to a nested list structure matching the tensor's shape."""
         if _prod(self.shape) == 0:
@@ -343,8 +356,8 @@ class Tensor:
             return self._nest(flat, list(self.shape))
 
         flat_ordered_data = []
-        for idx in Tensor._nd_indices(self.shape):
-            flat_ordered_data.append(self[idx])
+        for idx in _nd_indices(self.shape):
+            flat_ordered_data.append(self.__getitem__(idx))
 
         return self._nest(flat_ordered_data, list(self.shape))
 
