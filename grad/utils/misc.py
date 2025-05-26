@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from itertools import product as iter_product
+
 
 def tensor_stride(shape) -> tuple[int, ...]:
     """
@@ -16,3 +18,23 @@ def tensor_stride(shape) -> tuple[int, ...]:
         acc *= dim
     stride.reverse()
     return tuple(stride)
+
+
+def _nd_indices(shape):
+    """
+    Yields all possible n-dimensional indices for a given shape.
+    Example: shape = (2, 3) yields (0,0), (0,1), (0,2), (1,0), (1,1), (1,2)
+    """
+
+    return iter_product(*(range(s) for s in shape))
+
+
+def broadcast_shape(shp1: tuple[int, ...], shp2: tuple[int, ...]) -> list[int]:
+    return [1, 2]
+
+
+def can_broadcast(shp1: tuple[int, ...], shp2: tuple[int, ...]):
+    for a_dim, b_dim in zip(reversed(shp1), reversed(shp2)):
+        if a_dim != b_dim and a_dim != 1 and b_dim != 1:
+            return False
+    return True
