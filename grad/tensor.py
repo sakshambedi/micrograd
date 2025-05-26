@@ -174,6 +174,9 @@ class Tensor:
         """Return the stride of the tensor. If dim is specified, return the stride for that dimension."""
         return self._stride if dim is None else self._stride[dim % len(self.shape)]
 
+    @staticmethod
+    def matmul(t1, t2, /, dtype: dtypes | None = None): ...  # noqa : E704
+
     # ---- Default override fuctions ----
 
     def __add__(self, other):

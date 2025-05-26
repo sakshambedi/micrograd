@@ -30,7 +30,19 @@ def _nd_indices(shape):
 
 
 def broadcast_shape(shp1: tuple[int, ...], shp2: tuple[int, ...]) -> list[int]:
-    return [1, 2]
+    """
+    Computes the broadcasted shape of two input shapes according to broadcasting rules.
+    Raises ValueError if the shapes are not broadcast-compatible.
+    """
+    result = []
+    for a_dim, b_dim in zip(reversed(shp1), reversed(shp2)):
+        if a_dim == b_dim or a_dim == 1 or b_dim == 1:
+            result.append(max(a_dim, b_dim))
+        else:
+            raise ValueError(f"Shapes {shp1} and {shp2} are not broadcast-compatible.")
+    result.extend(reversed(shp1[: len(shp1) - len(shp2)]))
+    result.extend(reversed(shp2[: len(shp2) - len(shp1)]))
+    return list(reversed(result))
 
 
 def can_broadcast(shp1: tuple[int, ...], shp2: tuple[int, ...]):
