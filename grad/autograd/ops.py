@@ -19,8 +19,7 @@ def _elementwise_op(a: Tensor, b: Tensor, op: Callable[[Any, Any], Any]) -> Tens
 
     if a._contiguous and b._contiguous:
         assert a.storage is not None and b.storage is not None and result.storage is not None
-        a_memview = a.storage._storage
-        b_memview = b.storage._storage
+        a_memview, b_memview = a.storage._storage, b.storage._storage
         result_memview = result.storage._storage
 
         for i in range(prod(a.shape)):
@@ -41,7 +40,6 @@ def _unary_op(a: Tensor, op: Callable[[Any], Any]) -> Tensor:
     result = Tensor.zeros(a.shape, dtype=a.dtype, device=a.device)
 
     if a._contiguous:
-        # Fast path: direct memory access for contiguous tensors
         assert a.storage is not None and result.storage is not None
         a_memview = a.storage._storage
         result_memview = result.storage._storage
@@ -62,15 +60,13 @@ class Add(Function):
     @staticmethod
     def forward(ctx: Function, a: Tensor, b: Tensor) -> Tensor:
         """Element-wise addition of two tensors."""
-        return _elementwise_op(
-            a,
-            b,
-            lambda x, y: x + y,
-        )
+        ctx.save_for_backward(a, b)
+        return _elementwise_op(a, b, lambda x, y: x + y)
 
     @staticmethod
-    def backward(ctx: Function, *grad_outputs: Any) -> Any:
-        pass
+    def backward(ctx: Function, *grad_output: Any) -> Any:
+        # For addition, dL/da = grad_output, dL/db = grad_output
+        return grad_output, grad_output
 
 
 class Sub(Function):

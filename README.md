@@ -1,7 +1,5 @@
 # Micro-Grad: A Learning Journey into Deep Learning Frameworks
 
-<!-- ![Micro-Grad](./imgs/petitgrad-banner.jpeg) -->
-
 <p align="center">
   <img src="./imgs/micrograd-banner-m.jpeg" alt="Micrograd-Grad" width="600"/>
 </p>

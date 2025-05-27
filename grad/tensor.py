@@ -73,9 +73,7 @@ class Tensor:
         ...
 
     @classmethod
-    def randn(cls, range: int, **kw) -> Tensor:
-        """Pytroch random n number like function."""
-        ...
+    def randn(cls, range: int, **kw) -> Tensor: ...
 
     @classmethod
     def full(cls, shape: Sequence[int], fill_value: Any, **kw) -> Tensor:
@@ -175,7 +173,7 @@ class Tensor:
         return self._stride if dim is None else self._stride[dim % len(self.shape)]
 
     @staticmethod
-    def matmul(t1, t2, /, dtype: dtypes | None = None): ...  # noqa : E704
+    def matmul(t1: Tensor, t2: Tensor, /, dtype: dtypes | None = None): ...  # noqa : E704
 
     # ---- Default override fuctions ----
 

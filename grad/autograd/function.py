@@ -43,6 +43,30 @@ class Function:
 
     @classmethod
     def apply(cls, *inputs: Any, **kwargs: Any):
+        from grad.tensor import Tensor
+
         ctx = cls()
-        output = cls.forward(ctx, *inputs, **kwargs)
-        return output
+        result = cls.forward(ctx, *inputs, **kwargs)
+        require_grad = any(
+            getattr(tensor, "requires_grad", False)
+            for tensor in inputs
+            if isinstance(tensor, Tensor)
+        )
+        if require_grad:
+            result.grad_fn = ctx
+            result.requires_grad = True
+        return result
+
+    def save_for_backward(self, *tensors):
+        self._saved_tensors = tensors
+
+    @property
+    def saved_tensor(self):
+        return getattr(self, "_saved_tensors", ())
+
+    @saved_tensor.setter
+    def saved_tensor(self, value):
+        self._saved_tensors = value
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} object at {hex(id(self))}>"
