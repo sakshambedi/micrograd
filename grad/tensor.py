@@ -15,7 +15,7 @@ ARRAY_E_SUPPORTED = "e" in array.typecodes
 
 
 class Tensor:
-    """Tiny, NumPy‑like dense tensor backed by a contiguous buffer."""
+    """Tiny, PyTorch‑like dense tensor backed by a contiguous buffer."""
 
     __slots__ = (
         "shape",
