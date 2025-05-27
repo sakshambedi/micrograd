@@ -110,23 +110,20 @@ class Pow(Function):
     @staticmethod
     def forward(ctx: Function, a: Tensor, b: Tensor) -> Tensor:
         """Element-wise power operation."""
-        return _elementwise_op(
-            a,
-            b,
-            lambda x, y: x**y,
-        )
+        return _elementwise_op(a, b, lambda x, y: x**y)
 
     @staticmethod
     def backward(ctx: Function, *grad_outputs: Any) -> Any:
         pass
 
 
-# class Neg(Function):
-#     @staticmethod
-#     def forward(ctx: Function, a: Tensor) -> Tensor:
-#         """Element-wise negation."""
-#         return _unary_op(a, lambda x: -x)
+class Neg(Function):
+    @staticmethod
+    def forward(ctx: Function, a: Tensor) -> Tensor:
+        """Element-wise negation."""
+        ctx.save_for_backward(a)
+        return _unary_op(a, lambda x: -x)
 
-#     @staticmethod
-#     def backward(ctx: Function, *grad_outputs: Any) -> Any:
-#         pass
+    @staticmethod
+    def backward(ctx: Function, *grad_outputs: Any) -> Any:
+        pass

@@ -202,7 +202,10 @@ class Tensor:
 
         return Pow.apply(self, other)
 
-    def __neg__(self): ...  # noqa : E704
+    def __neg__(self):
+        from grad.autograd.ops import Neg
+
+        return Neg.apply(self)
 
     def _offset(self, index):
         return self.base_offset + sum(i * s for i, s in zip(index, self._stride))
