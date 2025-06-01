@@ -208,7 +208,7 @@ class Tensor:
         if t.storage is None:
             raise AttributeError("Tensor with data is not initialized yet!")
 
-        for i in t.buffer if t._contiguous else (t[idx] for idx in _nd_indices(t.shape)):
+        for i in t.buffer if t.is_contigous() else (t[idx] for idx in _nd_indices(t.shape)):
             yield dtypes._from_storage(i, rdtype)
 
     @property
@@ -220,9 +220,7 @@ class Tensor:
 
     def buffer_id(self) -> int:
         """Returns the memory address of the underlying storage."""
-        if self.storage is None:
-            return 0
-        return id(self.storage._storage)
+        return id(self.buffer)
 
     @overload
     def stride(self) -> tuple[int, ...]: ...  # noqa : E704

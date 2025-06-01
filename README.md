@@ -258,7 +258,7 @@ micrograd/
   - Basic optimizers (SGD, Adam, RMSprop)
   - Layer abstractions (Linear, Convolution)
 - **Performance optimizations:**
-  - Just-in-time compilation for computational graphs
+  - Just-in-time compilation for computational graphs (maybe)
   - Vectorized operations using SIMD instructions
   - Multi-threading for large tensor operations
 
@@ -298,4 +298,4 @@ This project is available under the MIT License.
 
 ---
 
-**micrograd** demonstrates that understanding complex systems like deep learning frameworks is best achieved by building them yourself. This implementation serves as both a learning tool and a foundation for further exploration into the fascinating world of Deep Learning and building efficient AI.
+**micrograd** demonstrates that understanding complex systems like deep learning frameworks is best achieved by building them yourself. This implementation serves as both a learning tool and a foundation for further exploration into the fascinating world of Deep Learning and building efficient .
