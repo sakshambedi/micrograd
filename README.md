@@ -1,7 +1,5 @@
 # Micro-Grad: A Learning Journey into Deep Learning Frameworks
 
-<!-- ![Micro-Grad](./imgs/petitgrad-banner.jpeg) -->
-
 <p align="center">
   <img src="./imgs/micrograd-banner-m.jpeg" alt="Micrograd-Grad" width="600"/>
 </p>
@@ -175,11 +173,11 @@ micrograd/
    # Shape manipulation
    f = d.view(4)
    print(f)  # [1.0, 2.0, 3.0, 4.0]
-   
+
    # Transpose
    g = Tensor.T(d)
    print(g)  # [[1.0, 3.0], [2.0, 4.0]]
-   
+
    # Permuting dimensions (for higher-dimensional tensors)
    h = Tensor([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
    i = Tensor.permute(h, 2, 0, 1)
@@ -194,7 +192,7 @@ micrograd/
    zeros = Tensor.zeros((2, 2))
    print(ones)  # [[1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]
    print(zeros)  # [[0.0, 0.0], [0.0, 0.0]]
-   
+
    # Automatic differentiation setup
    j = Tensor([1, 2, 3], requires_grad=True)
    k = j * j

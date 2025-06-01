@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import array
+import random
 from collections.abc import Generator, Iterable, Sequence
 from math import prod as _prod
 from typing import Any, Optional, overload
@@ -8,14 +8,13 @@ from typing import Any, Optional, overload
 from grad.autograd.function import Function
 from grad.buffer import Buffer
 from grad.dtype import DType, DTypeLike, dtypes
+from grad.utils.constants import ARRAY_E_SUPPORTED
 from grad.utils.fp16 import formatted_fp16_buffer, uint16_to_float16
 from grad.utils.misc import _nd_indices, tensor_stride
 
-ARRAY_E_SUPPORTED = "e" in array.typecodes
-
 
 class Tensor:
-    """Tiny, NumPy‑like dense tensor backed by a contiguous buffer."""
+    """Tiny, PyTorch‑like dense tensor backed by a contiguous buffer."""
 
     __slots__ = (
         "shape",
@@ -51,7 +50,7 @@ class Tensor:
         elif isinstance(data, (list, tuple)):
             self.shape: tuple[int, ...] = self._infer_shape(data)
             self.storage = Buffer(dtype, self._flatten_gen(data))
-        else:
+        else:  # Handles single int or float
             self.shape: tuple[int, ...] = ()
             self.storage = Buffer(dtype, [data])
 
@@ -67,15 +66,69 @@ class Tensor:
         """Create a tensor filled with ones."""
         return cls._filled(shape, 1, **kw)
 
-    @classmethod
-    def arange(cls, range: int, **kw) -> Tensor:
-        """Pytroch arange like function."""
-        ...
+    def is_contigous(self) -> bool:
+        return self._contiguous
 
     @classmethod
-    def randn(cls, range: int, **kw) -> Tensor:
-        """Pytroch random n number like function."""
-        ...
+    def arange(
+        cls,
+        end: int,
+        start: int = 0,
+        step: int = 1,
+        *,
+        dtype: DTypeLike = dtypes.float32,
+        device: str = "cpu",
+        requires_grad: bool = False,
+    ) -> Tensor:
+        """Return a 1D tensor with values from start to end (exclusive) with a given step.
+        # For some reason using a list comprehension for making arange is faster than using array.array
+        """
+        if step == 0:
+            raise ValueError("step must not be zero")
+
+        size = max(0, (end - start + (step - (1 if step > 0 else -1))) // step)
+
+        inst: Tensor = cls.__new__(cls)
+        inst.storage = Buffer(dtype, [start + i * step for i in range(size)])
+        inst.shape = (size,)
+        inst._stride = tensor_stride(inst.shape)
+        inst.device, inst.requires_grad = device, requires_grad
+        inst.grad, inst.grad_fn, inst._contiguous, inst.base_offset = (
+            None,
+            None,
+            True,
+            0,
+        )
+        return inst
+
+    @classmethod
+    def rand(cls, *shape: int, **kw) -> Tensor: ...  # noqa : E704
+
+    @classmethod
+    def eye(cls) -> Tensor: ...  # noqa : E704
+
+    @classmethod
+    def randn(cls, *shape: int, **kw) -> Tensor:
+        """Create a tensor with random numbers from a standard normal distribution.
+        Read More : https://docs.pytorch.org/docs/stable/generated/torch.randn.html
+        """
+        size = _prod(shape) if shape else 1
+        random_data = [random.gauss(0.0, 1.0) for _ in range(size)]
+
+        inst: Tensor = cls.__new__(cls)
+
+        inst.storage = Buffer(kw.get("dtype", dtypes.float32), random_data)
+        inst.shape = tuple(shape)
+        inst._stride = tensor_stride(inst.shape)
+        inst.device = kw.get("device", "cpu")
+        inst.requires_grad = kw.get("requires_grad", False)
+        inst.grad, inst.grad_fn, inst._contiguous, inst.base_offset = (
+            None,
+            None,
+            True,
+            0,
+        )
+        return inst
 
     @classmethod
     def full(cls, shape: Sequence[int], fill_value: Any, **kw) -> Tensor:
@@ -128,18 +181,17 @@ class Tensor:
     def permute(ten: Tensor, *idx: int) -> Tensor:
         """Permute the tensor. Read more: https://docs.pytorch.org/docs/stable/generated/torch.permute.html"""
         idx_tup: tuple[int, ...] = idx[0] if len(idx) == 1 and isinstance(idx[0], tuple) else idx
-        if len(idx) != len(ten.shape):
+        if len(idx_tup) != len(ten.shape):
             raise ValueError(
                 f"Number of permutation indices ({len(idx)}) must match tensor dimensions ({len(ten.shape)})"
             )
-        if len(set(idx)) != len(idx):
+        if len(set(idx_tup)) != len(idx_tup):
             raise ValueError(f"Permutation indices contain duplicates: {idx}")
-        if sorted(idx) != list(range(len(ten.shape))):
+        if sorted(idx_tup) != list(range(len(ten.shape))):
             raise ValueError(
                 f"Invalid permutation indices: {idx}. Must be a permutation of {list(range(len(ten.shape)))}"
             )
 
-        # apply permutation
         shape_n = [ten.shape[d] for d in idx_tup]
         stride_n = [ten.stride(d) for d in idx_tup]
         return ten._create_view(tuple(shape_n), stride=tuple(stride_n))
@@ -150,6 +202,14 @@ class Tensor:
         if self.storage is None:
             raise AttributeError("Tensor with data is not initialized yet!")
         return self.storage.dtype
+
+    @staticmethod
+    def iterbuffer(t: Tensor, rdtype: DType) -> Iterable[Any]:
+        if t.storage is None:
+            raise AttributeError("Tensor with data is not initialized yet!")
+
+        for i in t.buffer if t._contiguous else (t[idx] for idx in _nd_indices(t.shape)):
+            yield dtypes._from_storage(i, rdtype)
 
     @property
     def buffer(self) -> memoryview:
@@ -174,8 +234,30 @@ class Tensor:
         """Return the stride of the tensor. If dim is specified, return the stride for that dimension."""
         return self._stride if dim is None else self._stride[dim % len(self.shape)]
 
-    # ---- Default override fuctions ----
+    @staticmethod
+    def matmul(t1: Tensor, t2: Tensor, /, dtype: dtypes | None = None): ...  # noqa : E704
 
+    @staticmethod
+    def mean(t: Tensor, /, axis: int = 0) -> Tensor: ...
+
+    @staticmethod
+    def sum(
+        t: Tensor,
+        # dim: Optional[int] = None, # TODO: ADD functionality
+        # keepdim: bool = False,
+        *,
+        dtype: Optional[DType] = None,
+    ) -> Tensor:
+        if not t.storage:
+            raise AttributeError("")
+
+        return Tensor(
+            sum(Tensor.iterbuffer(t, dtype if dtype else t.dtype)),
+            dtype=t.dtype,
+            requires_grad=t.requires_grad,
+        )
+
+    # ---- Default override fuctions ----
     def __add__(self, other):
         from grad.autograd.ops import Add
 
@@ -201,7 +283,10 @@ class Tensor:
 
         return Pow.apply(self, other)
 
-    def __neg__(self): ...  # noqa : E704
+    def __neg__(self):
+        from grad.autograd.ops import Neg
+
+        return Neg.apply(self)
 
     def _offset(self, index):
         return self.base_offset + sum(i * s for i, s in zip(index, self._stride))
@@ -245,17 +330,15 @@ class Tensor:
 
     def __repr__(self) -> str:
         """Return a string representation of the tensor"""
-        nested = self._to_nested()
         return (
-            f"Tensor(shape={self.shape}, dtype={self.dtype.name},"
-            f"device={self.device}, requires_grad={self.requires_grad}, "
-            f"data={nested}), contiguous={self._contiguous}"
+            f"Tensor(shape={self.shape}, dtype={self.dtype.name}, "
+            f"device={self.device}, contiguous={self.is_contigous()}, requires_grad={self.requires_grad}, "
+            f"data={self._to_nested()})"
         )
 
     def __str__(self) -> str:
         """Return a string representation of the tensor data."""
-        nested = self._to_nested()
-        return str(nested)
+        return str(self._to_nested())
 
     # ---- Internal Helper Methods ----
     @classmethod
@@ -294,10 +377,8 @@ class Tensor:
         result._stride = tensor_stride(shape) if stride is None else stride
         result.device = self.device
         result.requires_grad = self.requires_grad
-        result.grad = None
-        result.grad_fn = None
+        result.grad, result.grad_fn, result._contiguous = None, None, False
         result.storage = self.storage
-        result._contiguous = False
         result.base_offset = 0 if base_offset is None else base_offset
         return result
 
