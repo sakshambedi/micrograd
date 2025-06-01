@@ -65,7 +65,7 @@ class Add(Function):
 
     @staticmethod
     def backward(ctx: Function, *grad_output: Any) -> Any:
-        # For addition, dL/da = grad_output, dL/db = grad_output
+        # For addition, L = a + b ;  dL/da = grad_output, dL/db = grad_output
         return grad_output, grad_output
 
 
@@ -73,14 +73,11 @@ class Sub(Function):
     @staticmethod
     def forward(ctx: Function, a: Tensor, b: Tensor) -> Tensor:
         """Element-wise subtraction of two tensors."""
-        return _elementwise_op(
-            a,
-            b,
-            lambda x, y: x - y,
-        )
+        return _elementwise_op(a, b, lambda x, y: x - y)
 
     @staticmethod
     def backward(ctx: Function, *grad_outputs: Any) -> Any:
+        # subtraction, dL/da =
         pass
 
 

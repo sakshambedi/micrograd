@@ -4,9 +4,10 @@ import array
 from dataclasses import dataclass
 from typing import Any, Final, Literal, Union
 
+# from grad.tensor import ARRAY_E_SUPPORTED # why this causes an issue with import ?
 from grad.utils.fp16 import float16_to_uint16, uint16_to_float16
 
-_ARRAY_E_SUPPORTED = "e" in array.typecodes
+ARRAY_E_SUPPORTED = "e" in array.typecodes
 
 FmtStr = Literal["?", "b", "B", "h", "H", "i", "I", "q", "Q", "e", "f", "d"]
 
@@ -56,6 +57,7 @@ class dtypes:
     # alias
     fp16: Final[DType] = float16
     fp32: Final[DType] = float32
+    fp64: Final[DType] = float64
     double: Final[DType] = float64
 
     @staticmethod
@@ -67,7 +69,7 @@ class dtypes:
     @classmethod
     def _storage_format(cls, dtype: DType) -> str:
         """Return the actual format code used to store data in the buffer."""
-        if dtype.fmt == "e" and not _ARRAY_E_SUPPORTED:
+        if dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
             return "H"  # store fp16 as uint16
         elif dtype.fmt == "?":
             return "b"  # store bools as signed char
@@ -80,7 +82,7 @@ class dtypes:
         """Convert val (python scalar) to the representation expected by storage.
         Keeps numeric types fast for the common cases, only struct‑packs for fp16.
         """
-        if dtype.fmt == "e" and not _ARRAY_E_SUPPORTED:
+        if dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
             # Use manual conversion when struct 'e' is not supported
             return float16_to_uint16(float(val))
         elif dtype.fmt == "?":
@@ -90,7 +92,7 @@ class dtypes:
     @classmethod
     def _from_storage(cls, stored: Any, dtype: DType) -> Any:
         """Inverse of _to_storage, read a python value from raw buffer item."""
-        if dtype.fmt == "e" and not _ARRAY_E_SUPPORTED:
+        if dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
             return uint16_to_float16(stored)
         elif dtype.fmt == "?":
             return bool(stored)

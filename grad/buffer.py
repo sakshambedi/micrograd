@@ -4,6 +4,8 @@ from collections import defaultdict
 from collections.abc import Iterable
 from typing import Any, Optional
 
+from grad.device import Device
+
 try:
     import psutil
 
@@ -12,9 +14,8 @@ except ImportError:
     HAS_PSUTIL = False
 
 from grad.dtype import DType, DTypeLike, dtypes, to_dtype
+from grad.utils.constants import ARRAY_E_SUPPORTED
 from grad.utils.fp16 import float16_to_uint16
-
-ARRAY_E_SUPPORTED = "e" in array.typecodes
 
 
 class BufferPool:
@@ -83,22 +84,23 @@ class BufferPool:
             total_buffers = sum(
                 len(pool) for format_pools in self._pools.values() for pool in format_pools.values()
             )
+
+            h_rate = (hits := self._allocation_stats["hits"]) / max(
+                1,
+                hits + (misses := self._allocation_stats["misses"]),  # noqa : W503
+            )
             return {
                 "total_cached_bytes": self._total_cached_bytes,
                 "total_cached_buffers": total_buffers,
-                "allocation_hits": self._allocation_stats["hits"],
-                "allocation_misses": self._allocation_stats["misses"],
+                "allocation_hits": hits,
+                "allocation_misses": misses,
                 "releases": self._allocation_stats["releases"],
-                "hit_rate": (
-                    self._allocation_stats["hits"]
-                    / max(1, self._allocation_stats["hits"] + self._allocation_stats["misses"])
-                ),
+                "hit_rate": h_rate,
             }
 
     def _should_cache_buffer(self, buffer_size_bytes: int) -> bool:
         """Determine if we should cache this buffer based on memory pressure"""
         if not HAS_PSUTIL:
-            # Fallback: use a simple heuristic (e.g., limit cache to 1GB)
             max_cache_bytes = 1024 * 1024 * 1024  # 1GB
             return (self._total_cached_bytes + buffer_size_bytes) < max_cache_bytes
 
@@ -131,18 +133,23 @@ class Buffer:
         self._storage: memoryview = self._make_buffer(dtype, iterable)
         self._fmt = dtypes._storage_format(self.dtype)
 
-    def to(self, device): ...  # noqa: E704
+    def to(self, device: Device): ...  # noqa: E704
+
+    @property
+    def fmt(self):
+        return self._fmt
 
     def __del__(self):
         """Return buffer to pool when Buffer is garbage collected"""
         if hasattr(self, "_storage") and hasattr(self, "_fmt"):
-            # Extract the underlying array from memoryview
             try:
-                underlying_array = self._storage.obj
-                if isinstance(underlying_array, array.array):
+                (
                     self._release_buffer(underlying_array, self._fmt)
+                    if isinstance(underlying_array := self._storage.obj, array.array)
+                    else None
+                )
             except (AttributeError, TypeError):
-                pass  # Buffer may not be from pool or already released
+                ...
 
     @classmethod
     def _get_buffer(cls, fmt: str, size: int) -> array.array:
@@ -191,8 +198,6 @@ class Buffer:
             arr[: len(data)] = array.array(fmt, values)
         else:
             arr[: len(data)] = array.array(fmt, data)
-
-        # Return memoryview sliced to actual data size
         return memoryview(arr)[: len(data)]
 
     def clone(self) -> "Buffer":
@@ -203,14 +208,11 @@ class Buffer:
         """Create a new buffer with different size, preserving existing data where possible"""
         current_data = self.to_list()
         if new_size > len(current_data):
-            # Pad with zeros
             current_data.extend([0] * (new_size - len(current_data)))
         elif new_size < len(current_data):
-            # Truncate
-            current_data = current_data[:new_size]
+            current_data = current_data[:new_size]  # Truncate
 
-        # Create new buffer with resized data
-        new_buffer = Buffer(self.dtype, current_data)
+        new_buffer = Buffer(self.dtype, current_data)  # Create new buffer w resized data
         return new_buffer
 
     def to_list(self) -> list[Any]:
@@ -239,9 +241,6 @@ class Buffer:
     def size_bytes(self) -> int:
         """Return the size of this buffer in bytes"""
         return len(self._storage) * self._storage.itemsize if self._storage else 0
-
-
-_buffer_pool = BufferPool()  # singleton instance
 
 
 # Convenience functions for global buffer management

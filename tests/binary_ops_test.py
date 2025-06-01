@@ -160,7 +160,7 @@ class TestPower:
     def test_pow_matches_numpy(self, a, b):
         t_a = Tensor(a)
         t_b = Tensor(b)
-        t_c = t_a ** t_b
+        t_c = t_a**t_b
         res = np.array(a) ** np.array(b)
         # Use almost_equal for floating point comparisons
         if any(isinstance(x, float) for x in a) or any(isinstance(x, float) for x in b):
@@ -171,7 +171,7 @@ class TestPower:
     def test_pow_2d(self):
         t0 = Tensor([[2, 3, 4], [5, 6, 7]])
         t1 = Tensor([[2, 2, 2], [1, 3, 2]])
-        out = t0 ** t1
+        out = t0**t1
         expected = np.array([[4, 9, 16], [5, 216, 49]])
         np.testing.assert_array_equal(out.to_numpy(), expected)
 
@@ -179,14 +179,14 @@ class TestPower:
         # Test with base 0 and positive exponent
         t0 = Tensor([0, 1, 2])
         t1 = Tensor([2, 0, 3])
-        out = t0 ** t1
+        out = t0**t1
         expected = np.array([0, 1, 8])
         np.testing.assert_array_equal(out.to_numpy(), expected)
 
     def test_pow_negative_base(self):
         t0 = Tensor([-2, -3])
         t1 = Tensor([2, 3])
-        out = t0 ** t1
+        out = t0**t1
         expected = np.array([4, -27])
         np.testing.assert_array_equal(out.to_numpy(), expected)
 
@@ -194,4 +194,4 @@ class TestPower:
         t0 = Tensor([1, 2, 3])
         t1 = Tensor([[1, 2], [3, 4]])
         with pytest.raises(ValueError, match="Shape mismatch"):
-            _ = t0 ** t1
+            _ = t0**t1

@@ -45,6 +45,8 @@ class Function:
     def apply(cls, *inputs: Any, **kwargs: Any):
         from grad.tensor import Tensor
 
+        # tclass = _tensor_cls()
+
         ctx = cls()
         result = cls.forward(ctx, *inputs, **kwargs)
         require_grad = any(
@@ -69,4 +71,4 @@ class Function:
         self._saved_tensors = value
 
     def __repr__(self):
-        return f"<{self.__class__.__name__} object at {hex(id(self))}>"
+        return f"<{self.__class__.__name__}Backward{hex(id(self))[0]}>"
