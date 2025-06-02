@@ -4,3 +4,4 @@ roadmap.sh
 .pytest_cache
 __pycache__
 main.py
+.gitignore
