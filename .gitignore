@@ -7,3 +7,5 @@ main.py
 .gitignore
 *.egg-info**
 .claude
+**build**
+**.so
