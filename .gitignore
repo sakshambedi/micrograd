@@ -5,3 +5,5 @@ roadmap.sh
 __pycache__
 main.py
 .gitignore
+*.egg-info**
+.claude

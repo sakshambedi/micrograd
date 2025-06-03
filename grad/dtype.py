@@ -2,10 +2,7 @@ from __future__ import annotations
 
 import array
 from dataclasses import dataclass
-from typing import Any, Final, Literal, Union
-
-# from grad.tensor import ARRAY_E_SUPPORTED # why this causes an issue with import ?
-from grad.utils.fp16 import float16_to_uint16, uint16_to_float16
+from typing import Final, Literal, Union
 
 ARRAY_E_SUPPORTED = "e" in array.typecodes
 
@@ -66,37 +63,33 @@ class dtypes:
             return t1 if t1.priority >= t2.priority else t2
         raise TypeError(f"Cannot upcast dtypes {t1.name} and {t2.name}")
 
-    @classmethod
-    def _storage_format(cls, dtype: DType) -> str:
-        """Return the actual format code used to store data in the buffer."""
-        if dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
-            return "H"  # store fp16 as uint16
-        elif dtype.fmt == "?":
-            return "b"  # store bools as signed char
-        elif dtype.fmt is None:
-            raise TypeError(f"Unsupported dtype {dtype.name} (no format string)")
-        return dtype.fmt
+    # @classmethod
+    # def _storage_format(cls, dtype: DType) -> str:
+    #     """Return the actual format code used to store data in the buffer."""
+    #     if dtype.fmt is None:
+    #         raise TypeError(f"Unsupported dtype {dtype.name} (no format string)")
+    #     return dtype.fmt
 
-    @classmethod
-    def _to_storage(cls, val: Any, dtype: DType) -> Any:
-        """Convert val (python scalar) to the representation expected by storage.
-        Keeps numeric types fast for the common cases, only struct‑packs for fp16.
-        """
-        if dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
-            # Use manual conversion when struct 'e' is not supported
-            return float16_to_uint16(float(val))
-        elif dtype.fmt == "?":
-            return 1 if bool(val) else 0
-        return val
+    # @classmethod
+    # def _to_storage(cls, val: Any, dtype: DType) -> Any:
+    #     """Convert val (python scalar) to the representation expected by storage.
+    #     Keeps numeric types fast for the common cases, only struct‑packs for fp16.
+    #     """
+    #     if dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
+    #         # Use manual conversion when struct 'e' is not supported
+    #         return float16_to_uint16(float(val))
+    #     elif dtype.fmt == "?":
+    #         return 1 if bool(val) else 0
+    #     return val
 
-    @classmethod
-    def _from_storage(cls, stored: Any, dtype: DType) -> Any:
-        """Inverse of _to_storage, read a python value from raw buffer item."""
-        if dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
-            return uint16_to_float16(stored)
-        elif dtype.fmt == "?":
-            return bool(stored)
-        return stored
+    # @classmethod
+    # def _from_storage(cls, stored: Any, dtype: DType) -> Any:
+    #     """Inverse of _to_storage, read a python value from raw buffer item."""
+    #     if dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
+    #         return uint16_to_float16(stored)
+    #     elif dtype.fmt == "?":
+    #         return bool(stored)
+    #     return stored
 
 
 DTypeLike = Union[str, DType]

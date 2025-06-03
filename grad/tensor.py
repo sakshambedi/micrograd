@@ -8,8 +8,6 @@ from typing import Any, Optional, overload
 from grad.autograd.function import Function
 from grad.buffer import Buffer
 from grad.dtype import DType, DTypeLike, dtypes
-from grad.utils.constants import ARRAY_E_SUPPORTED
-from grad.utils.fp16 import formatted_fp16_buffer, uint16_to_float16
 from grad.utils.misc import _nd_indices, tensor_stride
 
 
@@ -49,7 +47,7 @@ class Tensor:
             self.storage = Buffer(dtype, [0])
         elif isinstance(data, (list, tuple)):
             self.shape: tuple[int, ...] = self._infer_shape(data)
-            self.storage = Buffer(dtype, self._flatten_gen(data))
+            self.storage = Buffer(dtype, list(self._flatten_gen(data)))
         else:  # Handles single int or float
             self.shape: tuple[int, ...] = ()
             self.storage = Buffer(dtype, [data])
@@ -209,7 +207,7 @@ class Tensor:
             raise AttributeError("Tensor with data is not initialized yet!")
 
         for i in t.buffer if t.is_contigous() else (t[idx] for idx in _nd_indices(t.shape)):
-            yield dtypes._from_storage(i, rdtype)
+            yield i
 
     @property
     def buffer(self) -> memoryview:
@@ -298,9 +296,6 @@ class Tensor:
         if self.storage is not None:
             offsetval = self._offset(index)
             val = self.storage[offsetval]
-            if self.dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
-                val = uint16_to_float16(val)
-
             return val
 
         raise AttributeError("Tensor with a storage has not been initialized yet!")
@@ -331,12 +326,12 @@ class Tensor:
         return (
             f"Tensor(shape={self.shape}, dtype={self.dtype.name}, "
             f"device={self.device}, contiguous={self.is_contigous()}, requires_grad={self.requires_grad}, "
-            f"data={self._to_nested()})"
+            f"data={self.storage.__repr__()})"
         )
 
     def __str__(self) -> str:
         """Return a string representation of the tensor data."""
-        return str(self._to_nested())
+        return self.storage.__repr__()
 
     # ---- Internal Helper Methods ----
     @classmethod
@@ -348,6 +343,7 @@ class Tensor:
         dtype: DTypeLike = dtypes.float32,
         device: str = "cpu",
         requires_grad: Optional[bool] = None,
+        w,
     ) -> Tensor:
         """Internal method for creating tensors filled with a value."""
         inst: Tensor = cls.__new__(cls)
@@ -428,10 +424,7 @@ class Tensor:
             raise AttributeError("Tensor with data is not initialized yet!")
 
         if self._contiguous:
-            if self.dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
-                flat = formatted_fp16_buffer(self.storage._storage)  # FP16 -> py float
-            else:
-                flat = self.storage.to_list()
+            flat = self.storage.to_list()
             return self._nest(flat, list(self.shape))
 
         flat_ordered_data = []

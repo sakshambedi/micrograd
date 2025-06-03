@@ -1,0 +1,10 @@
+CompileFlags:
+  Add:
+    - "--include-directory=/opt/homebrew/include/eigen3"
+    - "--include-directory=/Users/sakshambedi/Documents/project/ML/micrograd/.venv/lib/python3.11/site-packages/pybind11/include/pybind11"
+    - "--include-directory=/opt/homebrew/include"
+
+
+Diagnostics:
+  MissingIncludes: Strict
+  UnusedIncludes: Strict
