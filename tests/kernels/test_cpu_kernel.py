@@ -18,6 +18,16 @@ def test_get_dtype():
     assert buf.get_dtype() == "float32"
 
 
+def test_get_dtype_int32():
+    buf = cpu_kernel.Buffer("int32", 1)
+    assert buf.get_dtype() == "int32"
+
+
+def test_get_dtype_bool():
+    buf = cpu_kernel.Buffer("bool", 1)
+    assert buf.get_dtype() == "bool"
+
+
 def test_invalid_dtype():
     with pytest.raises(RuntimeError):
         cpu_kernel.Buffer("invalid", 1)
