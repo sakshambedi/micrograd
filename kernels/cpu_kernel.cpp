@@ -27,58 +27,64 @@ public:
 } // namespace pybind11
 
 // --- VecBuffer Implementation ---
-template <typename T>
-VecBuffer<T>::VecBuffer(std::size_t n) : data_(n) {}
+template <typename T> VecBuffer<T>::VecBuffer(std::size_t n) : data_(n) {}
 
 template <typename T>
-VecBuffer<T>::VecBuffer(const T* src, std::size_t n)
+VecBuffer<T>::VecBuffer(const T *src, std::size_t n)
     : data_(Eigen::Map<const typename VecBuffer<T>::Array>(src, n)) {}
 
-template <typename T>
-T& VecBuffer<T>::operator[](std::size_t i) { return data_(i); }
+template <typename T> T &VecBuffer<T>::operator[](std::size_t i) {
+  return data_(i);
+}
 
-template <typename T>
-const T& VecBuffer<T>::operator[](std::size_t i) const { return data_(i); }
+template <typename T> const T &VecBuffer<T>::operator[](std::size_t i) const
+{
+  return data_(i);
+}
 
-template <typename T>
-std::size_t VecBuffer<T>::size() const { return data_.size(); }
+template <typename T> std::size_t VecBuffer<T>::size() const {
+  return data_.size();
+}
 
-template <typename T>
-T* VecBuffer<T>::data() { return data_.data(); }
+template <typename T> T *VecBuffer<T>::data() { return data_.data(); }
 
-template <typename T>
-const T* VecBuffer<T>::data() const { return data_.data(); }
-
-template <typename T>
-VecBuffer<T>& VecBuffer<T>::operator+=(const VecBuffer& rhs) {
-    data_ += rhs.data_;
-    return *this;
+template <typename T> const T *VecBuffer<T>::data() const {
+  return data_.data();
 }
 
 template <typename T>
-VecBuffer<T>& VecBuffer<T>::operator-=(const VecBuffer& rhs) {
-    data_ -= rhs.data_;
-    return *this;
+VecBuffer<T> &VecBuffer<T>::operator+=(const VecBuffer &rhs) {
+  data_ += rhs.data_;
+  return *this;
 }
 
 template <typename T>
-VecBuffer<T> VecBuffer<T>::cwiseMul(const VecBuffer& rhs) const {
-    return VecBuffer(data_.cwiseProduct(rhs.data_));
+VecBuffer<T> &VecBuffer<T>::operator-=(const VecBuffer &rhs) {
+  data_ -= rhs.data_;
+  return *this;
 }
 
 template <typename T>
-T VecBuffer<T>::dot(const VecBuffer& rhs) const {
-    return data_.matrix().dot(rhs.data_.matrix());
+VecBuffer<T> VecBuffer<T>::cwiseMul(const VecBuffer &rhs) const {
+  return VecBuffer(data_.cwiseProduct(rhs.data_));
+}
+
+template <typename T> T VecBuffer<T>::dot(const VecBuffer &rhs) const {
+  return data_.matrix().dot(rhs.data_.matrix());
 }
 
 template <typename T>
-Eigen::Ref<typename VecBuffer<T>::Array> VecBuffer<T>::ref() { return data_; }
+Eigen::Ref<typename VecBuffer<T>::Array> VecBuffer<T>::ref() {
+  return data_;
+}
 
 template <typename T>
-Eigen::Ref<const typename VecBuffer<T>::Array> VecBuffer<T>::ref() const { return data_; }
+Eigen::Ref<const typename VecBuffer<T>::Array> VecBuffer<T>::ref() const {
+  return data_;
+}
 
 template <typename T>
-VecBuffer<T>::VecBuffer(const typename VecBuffer<T>::Array& a) : data_(a) {}
+VecBuffer<T>::VecBuffer(const typename VecBuffer<T>::Array &a) : data_(a) {}
 
 // --- DTypeEnum Implementation ---
 DTypeEnum get_dtype_enum(std::string_view dtype) {
@@ -101,7 +107,7 @@ DTypeEnum get_dtype_enum(std::string_view dtype) {
   return (it == dtypeTable.end()) ? DTypeEnum::UNKNOWN : it->second;
 }
 
-// --- Buffer Implementation ---
+
 Buffer::Buffer(const std::string &dtype, std::size_t size) {
   if (dtype == "bool" || dtype == "?") {
     buffer_ = VecBuffer<bool>(size);
@@ -137,11 +143,8 @@ std::size_t Buffer::size() const {
 }
 
 py::object Buffer::get_item(std::size_t i) const {
-  return std::visit(
-      [i](auto const &buf) {
-        return py::cast(buf[i]);
-      },
-      buffer_);
+  return std::visit([i](auto const &buf) { return py::cast(buf[i]); },
+  buffer_);
 }
 
 void Buffer::set_item(std::size_t i, double val) {
@@ -196,16 +199,16 @@ PYBIND11_MODULE(cpu_kernel, m) {
       .def("size", &Buffer::size)
       .def("get_dtype", &Buffer::get_dtype);
 
-  // Keep the old individual classes for backwards compatibility
-  // py::class_<VecBuffer<float>>(m, "VecBufferFloat")
-  //     .def(py::init<std::size_t>())
-  //     .def("__getitem__",
-  //          [](const VecBuffer<float> &v, std::size_t i) { return v[i]; })
-  //     .def("__setitem__",
-  //          [](VecBuffer<float> &v, std::size_t i, float val) { v[i] = val; })
-  //     .def("size", &VecBuffer<float>::size)
-  //     .def("dot", &VecBuffer<float>::dot)
-  //     .def("cwiseMul", &VecBuffer<float>::cwiseMul)
-  //     .def("__iadd__", &VecBuffer<float>::operator+=, py::is_operator())
-  //     .def("__isub__", &VecBuffer<float>::operator-=, py::is_operator());
+//   Keep the old individual classes for backwards compatibility
+  py::class_<VecBuffer<float>>(m, "VecBufferFloat")
+      .def(py::init<std::size_t>())
+      .def("__getitem__",
+           [](const VecBuffer<float> &v, std::size_t i) { return v[i]; })
+      .def("__setitem__",
+           [](VecBuffer<float> &v, std::size_t i, float val) { v[i] = val;})
+      .def("size", &VecBuffer<float>::size)
+      .def("dot", &VecBuffer<float>::dot)
+      .def("cwiseMul", &VecBuffer<float>::cwiseMul)
+      .def("__iadd__", &VecBuffer<float>::operator+=, py::is_operator())
+      .def("__isub__", &VecBuffer<float>::operator-=, py::is_operator());
 }

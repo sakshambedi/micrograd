@@ -1,8 +1,6 @@
 from collections.abc import Iterable
 from typing import Any
 
-import numpy as np
-
 from grad.device import Device
 from grad.dtype import DType, DTypeLike, to_dtype
 from grad.kernels import cpu_kernel

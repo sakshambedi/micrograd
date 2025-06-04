@@ -4,13 +4,13 @@ import sys
 import pybind11
 from setuptools import Extension, find_packages, setup
 
-extra_compile_args = ["-std=c++17"]
+extra_compile_args = ["-std=c++17", "-O3"]
 if sys.platform == "darwin":
     extra_compile_args += ["-stdlib=libc++", "-mmacosx-version-min=10.9"]
 elif sys.platform == "win32":
-    extra_compile_args = ["/EHsc"]
+    extra_compile_args = ["/EHsc", "-march=native"]
 else:  # Linux
-    extra_compile_args += ["-fPIC"]
+    extra_compile_args += ["-fPIC", "-march=native"]
 ext_modules = [
     Extension(
         "grad.kernels.cpu_kernel",

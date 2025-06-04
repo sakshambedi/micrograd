@@ -45,7 +45,7 @@ private:
     explicit VecBuffer(const Array& a);
 };
 
-// --- DTypeEnum ---
+
 enum class DTypeEnum {
     BOOL, INT8, UINT8, INT16, UINT16, INT32, UINT32, INT64, UINT64,
     FLOAT16, FLOAT32, FLOAT64, UNKNOWN
@@ -53,7 +53,7 @@ enum class DTypeEnum {
 
 DTypeEnum get_dtype_enum(std::string_view dtype);
 
-// --- Buffer ---
+
 class Buffer {
 public:
     explicit Buffer(const std::string& dtype, std::size_t size);
