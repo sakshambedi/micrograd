@@ -1,5 +1,5 @@
-import sys
 import os
+import sys
 
 import pybind11
 from setuptools import Extension, find_packages, setup
@@ -15,7 +15,10 @@ ext_modules = [
     Extension(
         "grad.kernels.cpu_kernel",
         ["./kernels/cpu_kernel.cpp"],
-        include_dirs=[pybind11.get_include(), os.environ.get("EIGEN3_INCLUDE_DIR", "/usr/include/eigen3")],
+        include_dirs=[
+            pybind11.get_include(),
+            os.environ.get("EIGEN3_INCLUDE_DIR", "/opt/homebrew/include/eigen3"),
+        ],
         language="c++",
         extra_compile_args=extra_compile_args,
     ),

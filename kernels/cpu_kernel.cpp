@@ -157,6 +157,24 @@ std::string Buffer::get_dtype() const {
   return std::visit(
       [](const auto &buf) -> std::string {
         using T = typename std::decay_t<decltype(buf)>::Array::Scalar;
+        if constexpr (std::is_same_v<T, bool>)
+          return "bool";
+        if constexpr (std::is_same_v<T, std::int8_t>)
+          return "int8";
+        if constexpr (std::is_same_v<T, std::uint8_t>)
+          return "uint8";
+        if constexpr (std::is_same_v<T, std::int16_t>)
+          return "int16";
+        if constexpr (std::is_same_v<T, std::uint16_t>)
+          return "uint16";
+        if constexpr (std::is_same_v<T, std::int32_t>)
+          return "int32";
+        if constexpr (std::is_same_v<T, std::uint32_t>)
+          return "uint32";
+        if constexpr (std::is_same_v<T, std::int64_t>)
+          return "int64";
+        if constexpr (std::is_same_v<T, std::uint64_t>)
+          return "uint64";
         if constexpr (std::is_same_v<T, float>)
           return "float32";
         if constexpr (std::is_same_v<T, double>)

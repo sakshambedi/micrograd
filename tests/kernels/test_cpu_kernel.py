@@ -1,4 +1,5 @@
 import pytest
+
 from grad.kernels import cpu_kernel
 
 
@@ -16,6 +17,16 @@ def test_set_and_get():
 def test_get_dtype():
     buf = cpu_kernel.Buffer("float32", 1)
     assert buf.get_dtype() == "float32"
+
+
+def test_get_dtype_int32():
+    buf = cpu_kernel.Buffer("int32", 1)
+    assert buf.get_dtype() == "int32"
+
+
+def test_get_dtype_bool():
+    buf = cpu_kernel.Buffer("bool", 1)
+    assert buf.get_dtype() == "bool"
 
 
 def test_invalid_dtype():

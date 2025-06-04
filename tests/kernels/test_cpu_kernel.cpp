@@ -11,8 +11,6 @@ TEST(BufferTest, Size) {
 TEST(BufferTest, SetAndGet) {
   Buffer buf("float32", 1);
   buf.set_item(0, 42.0);
-  // get_item returns a py::object, so cast to float
-  // float value = py::cast<float>(buf.get_item(0));
   float32_t value = buf.get_item(0);
   EXPECT_EQ(value, 42.0);
 }
