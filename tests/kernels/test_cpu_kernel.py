@@ -1,4 +1,5 @@
 import pytest
+
 from grad.kernels import cpu_kernel
 
 

@@ -41,4 +41,4 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest)
 
 enable_testing()
-add_subdirectory(tests/kernel_test)
+add_subdirectory(tests/kernels)
