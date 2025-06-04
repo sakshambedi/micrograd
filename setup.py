@@ -14,7 +14,11 @@ ext_modules = [
     Extension(
         "grad.kernels.cpu_kernel",
         ["./kernels/cpu_kernel.cpp"],
-        include_dirs=[pybind11.get_include(), "/opt/homebrew/include/eigen3"],
+        include_dirs=[
+            pybind11.get_include(),
+            "/opt/homebrew/include/eigen3",
+            "/usr/include/eigen3",
+        ],
         language="c++",
         extra_compile_args=extra_compile_args,
     ),

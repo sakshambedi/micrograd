@@ -343,7 +343,6 @@ class Tensor:
         dtype: DTypeLike = dtypes.float32,
         device: str = "cpu",
         requires_grad: Optional[bool] = None,
-        w,
     ) -> Tensor:
         """Internal method for creating tensors filled with a value."""
         inst: Tensor = cls.__new__(cls)
