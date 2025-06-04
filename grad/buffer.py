@@ -1,19 +1,23 @@
 from collections.abc import Iterable
 from typing import Any
 
+import numpy as np
+
 from grad.device import Device
 from grad.dtype import DType, DTypeLike, to_dtype
 from grad.kernels import cpu_kernel
 
 
 class Buffer:
-    __slots__ = ("dtype", "_storage", "_fmt")
+    __slots__ = ("dtype", "_storage", "_fmt", "numelem")
 
-    def __init__(self, dtype: DTypeLike, iterable: list[Any] | tuple[Any]):
+    def __init__(self, dtype: DTypeLike, iterable: list[Any]):
         self.dtype: DType = to_dtype(dtype)
         self._storage = cpu_kernel.Buffer(self.dtype.fmt, len(iterable))
         for i, v in enumerate(iterable):
             self._storage[i] = v
+        # arr = np.array(iterable, dtype=dtype.name, copy=False)
+        # self._storage = cpu_kernel.Buffer(dtype, arr)
 
     def to(self, device: Device): ...  # noqa: E704
 
@@ -25,13 +29,14 @@ class Buffer:
         return self._storage.size()
 
     def __repr__(self) -> str:
-        rstr = "["
-        for idx in range(tlen := self.__len__()):
-            rstr += str(self._storage[idx]) + (", " if idx != tlen - 1 else "]")
-        return rstr
+        return str(self.to_list())
+
+    def iterstorage(self) -> Iterable[Any]:
+        for i in range(self.__len__()):
+            yield self._storage[i]
 
     def to_list(self) -> list[Any]:
-        return [val for val in self._storage]
+        return [val for val in self.iterstorage()]
 
     def __del__(self): ...
 
