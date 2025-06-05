@@ -15,10 +15,6 @@ class Buffer:
 
     def to(self, device: Device): ...  # noqa: E704
 
-    @property
-    def fmt(self):
-        return self.dtype.name
-
     def __len__(self):
         return self._storage.size()
 

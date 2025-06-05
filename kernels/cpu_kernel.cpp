@@ -21,13 +21,39 @@
 #include <variant>
 
 namespace py = pybind11;
+
 // pybind11 type_caster for Eigen::half
-namespace pybind11 {
-namespace detail {
+namespace pybind11::detail {
 
 template <> struct type_caster<Eigen::half> {
 public:
-  PYBIND11_TYPE_CASTER(Eigen::half, _("numpy.float16"));
+protected:
+  Eigen ::half value;
+
+public:
+  static constexpr auto name = _("numpy.float16");
+  template <
+      typename T_,
+      ::pybind11 ::detail ::enable_if_t<
+          std ::is_same_v<Eigen ::half, ::pybind11 ::detail ::remove_cv_t<T_>>,
+          int> = 0>
+  static ::pybind11 ::handle cast(T_ *src,
+                                  ::pybind11 ::return_value_policy policy,
+                                  ::pybind11 ::handle parent) {
+    if (!src)
+      return ::pybind11 ::none().release();
+    if (policy == ::pybind11 ::return_value_policy ::take_ownership) {
+      auto h = cast(std ::move(*src), policy, parent);
+      delete src;
+      return h;
+    }
+    return cast(*src, policy, parent);
+  }
+  operator Eigen ::half *() { return &value; }
+  operator Eigen ::half &() { return value; }
+  operator Eigen ::half &&() && { return std ::move(value); }
+  template <typename T_>
+  using cast_op_type = ::pybind11 ::detail ::movable_cast_op_type<T_>;
 
   // Python → C++
   bool load(handle src, bool) {
@@ -43,8 +69,7 @@ public:
   }
 };
 
-} // namespace detail
-} // namespace pybind11
+} // namespace pybind11::detail
 
 // --- VecBuffer Implementation ---
 template <typename T> VecBuffer<T>::VecBuffer(std::size_t n) : data_(n) {}
@@ -268,10 +293,10 @@ template class VecBuffer<double>;
 PYBIND11_MODULE(cpu_kernel, m) {
   // Expose the variant-based Buffer class
   py::class_<Buffer>(m, "Buffer")
-      .def(py::init<py::sequence, std::string_view>(),
-           py::arg("sequence"), py::arg("fmt"))
-      .def(py::init<const std::string &, std::size_t>(),
-           py::arg("dtype"), py::arg("size"))
+      .def(py::init<py::sequence, std::string_view>(), py::arg("sequence"),
+           py::arg("fmt"))
+      .def(py::init<const std::string &, std::size_t>(), py::arg("dtype"),
+           py::arg("size"))
       .def("__getitem__", &Buffer::get_item)
       .def("__setitem__", &Buffer::set_item)
       .def("size", &Buffer::size)
