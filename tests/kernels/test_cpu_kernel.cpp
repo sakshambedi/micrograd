@@ -1,41 +1,72 @@
 #include "../../kernels/cpu_kernel.h"
-#include <cmath>
 #include <gtest/gtest.h>
-#include <limits>
-#include <stdexcept>
+#include <pybind11/embed.h>
+#include <cmath>
 
 namespace py = pybind11;
 
-// Test Buffer size functionality
-TEST(BufferTest, Size) {
-  Buffer buf("float32", 5);
-  EXPECT_EQ(buf.size(), 5);
+// Verify constructor and dtype reporting
+TEST(BufferTest, ConstructorAndSize) {
+  py::scoped_interpreter guard{};
 
-  Buffer empty_buf("int32", 0);
-  EXPECT_EQ(empty_buf.size(), 0);
+  Buffer fbuf("float32", 5);
+  EXPECT_EQ(fbuf.size(), 5);
+  EXPECT_EQ(fbuf.get_dtype(), "float32");
 
-  Buffer large_buf("bool", 1000);
-  EXPECT_EQ(large_buf.size(), 1000);
+  Buffer ibuf("int64", 3);
+  EXPECT_EQ(ibuf.size(), 3);
+  EXPECT_EQ(ibuf.get_dtype(), "int64");
+
+  Buffer bbuf("bool", 2);
+  EXPECT_EQ(bbuf.size(), 2);
+  EXPECT_EQ(bbuf.get_dtype(), "bool");
 }
 
-// Test set_item with different overloads
-TEST(BufferTest, SetItem) {
-  // Test double overload
-  Buffer float_buf("float32", 1);
-  float_buf.set_item_double(0, 42.5);
+// Test set and get operations for various dtypes
+TEST(BufferTest, SetAndGet) {
+  py::scoped_interpreter guard{};
 
-  // Test int64 overload
-  Buffer int_buf("int32", 1);
-  int_buf.set_item_int64(0, 42);
+  Buffer fbuf("float32", 1);
+  fbuf.set_item(0, 3.5);
+  EXPECT_NEAR(py::cast<float>(fbuf.get_item(0)), 3.5f, 1e-6f);
 
-  // Test bool overload
-  Buffer bool_buf("bool", 1);
-  bool_buf.set_item_bool(0, true);
+  Buffer ibuf("int32", 1);
+  ibuf.set_item(0, 7);
+  EXPECT_EQ(py::cast<int>(ibuf.get_item(0)), 7);
+
+  Buffer bbuf("bool", 1);
+  bbuf.set_item(0, 1.0);
+  EXPECT_TRUE(py::cast<bool>(bbuf.get_item(0)));
 }
 
-// Test get_dtype functionality
-TEST(BufferTest, GetDtype) {
-  Buffer buf_f32("float32", 1);
-  EXPECT_EQ(buf_f32.get_dtype(), "float32");
+// Out-of-bounds accesses should trigger a debug assertion
+TEST(BufferDeathTest, GetItemOutOfBounds) {
+  py::scoped_interpreter guard{};
+  Buffer buf("float32", 1);
+  EXPECT_DEATH({ buf.get_item(2); }, "index");
+}
 
-  Buffer buf_f64("float64
+TEST(BufferDeathTest, SetItemOutOfBounds) {
+  Buffer buf("float32", 1);
+  EXPECT_DEATH({ buf.set_item(3, 1.0); }, "index");
+}
+
+// Validate type conversions and data preservation
+TEST(BufferTest, TypeConversions) {
+  py::scoped_interpreter guard{};
+
+  Buffer dbuf("float64", 1);
+  dbuf.set_item(0, 3.14159);
+  EXPECT_NEAR(py::cast<double>(dbuf.get_item(0)), 3.14159, 1e-9);
+
+  Buffer ibuf("int64", 1);
+  ibuf.set_item(0, -5);
+  EXPECT_EQ(py::cast<long long>(ibuf.get_item(0)), -5);
+
+  Buffer fbuf("float32", 1);
+  fbuf.set_item(0, 42);
+  EXPECT_NEAR(py::cast<float>(fbuf.get_item(0)), 42.0f, 1e-6f);
+
+  fbuf.set_item(0, 5.5);
+  EXPECT_NEAR(py::cast<float>(fbuf.get_item(0)), 5.5f, 1e-6f);
+}
