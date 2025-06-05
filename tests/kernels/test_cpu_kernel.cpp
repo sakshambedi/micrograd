@@ -1,5 +1,4 @@
 #include "../../kernels/cpu_kernel.h"
-#include <cmath>
 #include <gtest/gtest.h>
 #include <pybind11/embed.h>
 

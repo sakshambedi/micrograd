@@ -1,6 +1,6 @@
 import pytest
 
-from grad.kernels import cpu_kernel
+from grad.kernels import cpu_kernel  # type: ignore
 
 
 class TestBufferConstructors:
@@ -100,7 +100,7 @@ class TestBufferConstructors:
 
         buf_bool = cpu_kernel.Buffer("bool", 2)
         for i in range(2):
-            assert buf_bool[i] == False
+            assert not buf_bool[i]
 
     def test_equivalent_results(self):
         size = 10

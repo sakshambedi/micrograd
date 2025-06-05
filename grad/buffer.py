@@ -3,7 +3,7 @@ from typing import Any
 
 from grad.device import Device
 from grad.dtype import DType, DTypeLike, to_dtype
-from grad.kernels import cpu_kernel
+from grad.kernels import cpu_kernel  # type: ignore
 
 
 class Buffer:
@@ -11,13 +11,7 @@ class Buffer:
 
     def __init__(self, dtype: DTypeLike, iterable: list[Any], *, copy: bool = True):
         self.dtype: DType = to_dtype(dtype)
-
         self._storage = cpu_kernel.Buffer(iterable, self.dtype.fmt)
-        # self._storage = cpu_kernel.Buffer(self.dtype.fmt, len(iterable))
-        # for i, v in enumerate(iterable):
-        #     self._storage[i] = v
-        # arr = np.array(iterable, dtype=dtype.name, copy=False)
-        # self._storage = cpu_kernel.Buffer(dtype, arr)
 
     def to(self, device: Device): ...  # noqa: E704
 

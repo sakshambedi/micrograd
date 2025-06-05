@@ -4,7 +4,7 @@
 
 // Test DTypeEnum conversions for all supported data types
 TEST(DTypeEnumTest, AllTypeConversions) {
-  // Test canonical type names
+
   EXPECT_EQ(get_dtype_enum("bool"), DTypeEnum::BOOL);
   EXPECT_EQ(get_dtype_enum("int8"), DTypeEnum::INT8);
   EXPECT_EQ(get_dtype_enum("uint8"), DTypeEnum::UINT8);
@@ -17,8 +17,7 @@ TEST(DTypeEnumTest, AllTypeConversions) {
   EXPECT_EQ(get_dtype_enum("float16"), DTypeEnum::FLOAT16);
   EXPECT_EQ(get_dtype_enum("float32"), DTypeEnum::FLOAT32);
   EXPECT_EQ(get_dtype_enum("float64"), DTypeEnum::FLOAT64);
-  
-  // Test short codes
+
   EXPECT_EQ(get_dtype_enum("?"), DTypeEnum::BOOL);
   EXPECT_EQ(get_dtype_enum("b"), DTypeEnum::INT8);
   EXPECT_EQ(get_dtype_enum("B"), DTypeEnum::UINT8);
@@ -33,7 +32,6 @@ TEST(DTypeEnumTest, AllTypeConversions) {
   EXPECT_EQ(get_dtype_enum("d"), DTypeEnum::FLOAT64);
 }
 
-// Test unknown dtype conversions
 TEST(DTypeEnumTest, UnknownTypes) {
   EXPECT_EQ(get_dtype_enum("complex64"), DTypeEnum::UNKNOWN);
   EXPECT_EQ(get_dtype_enum("complex128"), DTypeEnum::UNKNOWN);
@@ -43,17 +41,15 @@ TEST(DTypeEnumTest, UnknownTypes) {
   EXPECT_EQ(get_dtype_enum("x"), DTypeEnum::UNKNOWN); // Non-existent code
 }
 
-// Test case sensitivity
 TEST(DTypeEnumTest, CaseSensitivity) {
-  // These should not match due to case sensitivity
+
   EXPECT_NE(get_dtype_enum("FLOAT32"), DTypeEnum::FLOAT32);
   EXPECT_NE(get_dtype_enum("Float32"), DTypeEnum::FLOAT32);
   EXPECT_EQ(get_dtype_enum("FLOAT32"), DTypeEnum::UNKNOWN);
 }
 
-// Test whitespace handling
 TEST(DTypeEnumTest, WhitespaceHandling) {
-  // Extra whitespace should cause no match
+
   EXPECT_EQ(get_dtype_enum(" float32"), DTypeEnum::UNKNOWN);
   EXPECT_EQ(get_dtype_enum("float32 "), DTypeEnum::UNKNOWN);
   EXPECT_EQ(get_dtype_enum("float 32"), DTypeEnum::UNKNOWN);
