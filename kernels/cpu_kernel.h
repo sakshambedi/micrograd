@@ -46,7 +46,7 @@ private:
   explicit VecBuffer(const Array &a);
 };
 
-enum class DTypeEnum {
+enum class DTypeEnum : std::uint8_t {
   BOOL,
   INT8,
   UINT8,
