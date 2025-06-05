@@ -8,8 +8,6 @@ from typing import Any, Optional, overload
 from grad.autograd.function import Function
 from grad.buffer import Buffer
 from grad.dtype import DType, DTypeLike, dtypes
-from grad.utils.constants import ARRAY_E_SUPPORTED
-from grad.utils.fp16 import formatted_fp16_buffer, uint16_to_float16
 from grad.utils.misc import _nd_indices, tensor_stride
 
 
@@ -49,7 +47,7 @@ class Tensor:
             self.storage = Buffer(dtype, [0])
         elif isinstance(data, (list, tuple)):
             self.shape: tuple[int, ...] = self._infer_shape(data)
-            self.storage = Buffer(dtype, self._flatten_gen(data))
+            self.storage = Buffer(dtype, list(self._flatten_gen(data)))
         else:  # Handles single int or float
             self.shape: tuple[int, ...] = ()
             self.storage = Buffer(dtype, [data])
@@ -209,7 +207,7 @@ class Tensor:
             raise AttributeError("Tensor with data is not initialized yet!")
 
         for i in t.buffer if t.is_contigous() else (t[idx] for idx in _nd_indices(t.shape)):
-            yield dtypes._from_storage(i, rdtype)
+            yield i
 
     @property
     def buffer(self) -> memoryview:
@@ -298,9 +296,6 @@ class Tensor:
         if self.storage is not None:
             offsetval = self._offset(index)
             val = self.storage[offsetval]
-            if self.dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
-                val = uint16_to_float16(val)
-
             return val
 
         raise AttributeError("Tensor with a storage has not been initialized yet!")
@@ -348,6 +343,7 @@ class Tensor:
         dtype: DTypeLike = dtypes.float32,
         device: str = "cpu",
         requires_grad: Optional[bool] = None,
+        w,
     ) -> Tensor:
         """Internal method for creating tensors filled with a value."""
         inst: Tensor = cls.__new__(cls)
@@ -418,27 +414,50 @@ class Tensor:
 
     def _to_nested(self) -> Any:
         """Convert the flat buffer to a nested list structure matching the tensor's shape."""
-        if _prod(self.shape) == 0:
-            if not self.shape:
-                return [] if self.storage and _prod(self.shape) == 0 else None
+        # Handle empty tensors
+        if not self.shape or _prod(self.shape) == 0:
+            if not self.shape:  # scalar case with empty shape
+                return None if self.storage is None else self.storage[0]
 
+            # Empty tensor with dimensions
             return [self._nest([], list(self.shape[1:])) for _ in range(self.shape[0])]
 
+        # Check if storage exists
         if self.storage is None:
             raise AttributeError("Tensor with data is not initialized yet!")
 
+        # Contiguous tensor case - more efficient
         if self._contiguous:
-            if self.dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
-                flat = formatted_fp16_buffer(self.storage._storage)  # FP16 -> py float
-            else:
-                flat = self.storage.to_list()
+            flat = self.storage.to_list()
             return self._nest(flat, list(self.shape))
 
+        # Non-contiguous tensor case - need to go through indices
         flat_ordered_data = []
         for idx in _nd_indices(self.shape):
             flat_ordered_data.append(self.__getitem__(idx))
 
         return self._nest(flat_ordered_data, list(self.shape))
+
+    # def _to_nested(self) -> Any:
+    #     """Convert the flat buffer to a nested list structure matching the tensor's shape."""
+    #     if _prod(self.shape) == 0:
+    #         if not self.shape:
+    #             return [] if self.storage and _prod(self.shape) == 0 else None
+
+    #         return [self._nest([], list(self.shape[1:])) for _ in range(self.shape[0])]
+
+    #     if self.storage is None:
+    #         raise AttributeError("Tensor with data is not initialized yet!")
+
+    #     if self._contiguous:
+    #         flat = self.storage.to_list()
+    #         return self._nest(flat, list(self.shape))
+
+    #     flat_ordered_data = []
+    #     for idx in _nd_indices(self.shape):
+    #         flat_ordered_data.append(self.__getitem__(idx))
+
+    #     return self._nest(flat_ordered_data, list(self.shape))
 
     @staticmethod
     def _nest(flat: list[Any], dims: list[int]) -> Any:

@@ -23,9 +23,9 @@ def _elementwise_op(a: Tensor, b: Tensor, op: Callable[[Any, Any], Any]) -> Tens
         result_memview = result.storage._storage
 
         for i in range(prod(a.shape)):
-            py_val_a = dtypes._from_storage(a_memview[i], a.dtype)
-            py_val_b = dtypes._from_storage(b_memview[i], b.dtype)
-            result_memview[i] = dtypes._to_storage(op(py_val_a, py_val_b), rtype)
+            # py_val_a = dtypes._from_storage(a_memview[i], a.dtype)
+            # py_val_b = dtypes._from_storage(b_memview[i], b.dtype)
+            result_memview[i] = op(a_memview[i], b_memview[i])
 
     else:
         for idx in _nd_indices(a.shape):
@@ -46,9 +46,9 @@ def _unary_op(a: Tensor, op: Callable[[Any], Any]) -> Tensor:
 
         for i in range(prod(a.shape)):
             val_stored = a_memview[i]
-            py_val = dtypes._from_storage(val_stored, a.dtype)
-            result_py = op(py_val)
-            result_memview[i] = dtypes._to_storage(result_py, a.dtype)
+            # py_val = dtypes._from_storage(val_stored, a.dtype)
+            # result_py =
+            result_memview[i] = op(val_stored)  #  dtypes._to_storage(result_py, a.dtype)
     else:
         for idx in _nd_indices(a.shape):
             result[idx] = op(a[idx])

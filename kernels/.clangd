@@ -1,0 +1,28 @@
+CompileFlags:
+  Add:
+    # System includes
+    - "--include-directory=/opt/homebrew/include"
+    - "--include-directory=/opt/homebrew/include/eigen3"
+    
+    # Python and pybind11 includes
+    - "--include-directory=/Users/sakshambedi/Documents/project/ML/micrograd/.venv/lib/python3.11/site-packages/pybind11/include"
+    - "--include-directory=/Users/sakshambedi/Documents/project/ML/micrograd/.venv/lib/python3.11/site-packages/pybind11/include/pybind11"
+    - "--include-directory=/opt/homebrew/opt/python@3.11/Frameworks/Python.framework/Versions/3.11/include/python3.11"
+    
+    # C++ standard and optimization flags
+    - "-std=c++17"
+    - "-O2"
+    
+    # Warning controls
+    - "-Wno-unused-variable"
+    - "-Wno-missing-include-dirs"
+
+Diagnostics:
+  ClangTidy:
+    Add: 
+      - performance-*
+      - modernize-*
+    Remove: 
+      - modernize-use-trailing-return-type
+  MissingIncludes: None
+  UnusedIncludes: None
