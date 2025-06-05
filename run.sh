@@ -2,6 +2,6 @@
 set -e
 mkdir -p build
 cd build
-cmake -Wno-dev -DPython3_EXECUTABLE=$(which python3) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON . ..
+cmake -Wno-dev -DPython3_EXECUTABLE=$(which python3) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
 make
 ctest --output-on-failure
