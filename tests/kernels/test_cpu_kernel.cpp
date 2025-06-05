@@ -1,10 +1,12 @@
 #include "../../kernels/cpu_kernel.h"
+#include <cassert>
 #include <gtest/gtest.h>
+#include <iostream>
 #include <pybind11/embed.h>
-
 namespace py = pybind11;
 
 // Verify constructor and dtype reporting
+
 TEST(BufferTest, ConstructorAndSize) {
   py::scoped_interpreter guard{};
 
