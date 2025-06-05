@@ -9,11 +9,13 @@ from grad.kernels import cpu_kernel
 class Buffer:
     __slots__ = ("dtype", "_storage", "_fmt", "numelem")
 
-    def __init__(self, dtype: DTypeLike, iterable: list[Any]):
+    def __init__(self, dtype: DTypeLike, iterable: list[Any], *, copy: bool = True):
         self.dtype: DType = to_dtype(dtype)
-        self._storage = cpu_kernel.Buffer(self.dtype.fmt, len(iterable))
-        for i, v in enumerate(iterable):
-            self._storage[i] = v
+
+        self._storage = cpu_kernel.Buffer(iterable, self.dtype.fmt)
+        # self._storage = cpu_kernel.Buffer(self.dtype.fmt, len(iterable))
+        # for i, v in enumerate(iterable):
+        #     self._storage[i] = v
         # arr = np.array(iterable, dtype=dtype.name, copy=False)
         # self._storage = cpu_kernel.Buffer(dtype, arr)
 
@@ -21,7 +23,7 @@ class Buffer:
 
     @property
     def fmt(self):
-        return self.dtype.fmt
+        return self.dtype.name
 
     def __len__(self):
         return self._storage.size()

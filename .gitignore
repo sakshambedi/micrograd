@@ -4,9 +4,8 @@ roadmap.sh
 .pytest_cache
 __pycache__
 main.py
-.gitignore
 *.egg-info**
 .claude
-**build**
+build
 **.so
 .vscode
