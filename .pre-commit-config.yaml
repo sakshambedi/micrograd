@@ -1,10 +1,10 @@
 repos:
   - repo: https://github.com/pycqa/flake8
-    rev: 7.0.0
+    rev: 7.2.0
     hooks:
       - id: flake8
         language_version: python3
-        args: ["--ignore=E501,E731"]
+        args: ["--ignore=E501,E731,E704"]
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
@@ -12,6 +12,7 @@ repos:
       - id: end-of-file-fixer
       - id: trailing-whitespace
       - id: check-yaml
+        args: ["--unsafe"] # Allows YAML processing without schema validation
       - id: check-added-large-files
       - id: check-merge-conflict
       - id: check-case-conflict
@@ -20,19 +21,43 @@ repos:
       - id: requirements-txt-fixer
 
   - repo: https://github.com/asottile/blacken-docs
-    rev: v1.12.1
+    rev: 1.19.1
     hooks:
       - id: blacken-docs
 
   - repo: https://github.com/psf/black
-    rev: 24.3.0
+    rev: 25.1.0
     hooks:
       - id: black
         language_version: python3
         args: ["--line-length=100"]
 
+  - repo: https://github.com/cpplint/cpplint
+    rev: 2.0.2
+    hooks:
+      - id: cpplint
+        files: \.(cpp|h|hpp|cc|cxx|c\+\+|hh|hxx)$
+        args:
+          ["--filter=-build/include_subdir,-whitespace,-build/include_order"]
+
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v20.1.5
+    hooks:
+      - id: clang-format
+        files: \.(cpp|h|hpp|cc|cxx|c\+\+|hh|hxx)$
+
+  # - repo: https://github.com/fsfe/reuse-tool
+  #   rev: v5.0.2
+  #   hooks:
+  #     - id: reuse
+  #       name: copyright-check
+  #       entry: reuse lint
+  #       language: system
+  #       types: [file]
+  #       files: \.(cpp|h|hpp|cc|cxx|c\+\+|hh|hxx)$
+
   - repo: https://github.com/PyCQA/bandit
-    rev: 1.7.7
+    rev: 1.8.3
     hooks:
       - id: bandit
         args: ["-ll"]

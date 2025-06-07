@@ -1,3 +1,6 @@
+// Copyright 2025 Saksham Bedi hello@sakshambedi.com
+// All rights reserved.
+
 #include "../../kernels/cpu_kernel.h"
 #include <gtest/gtest.h>
 
@@ -21,8 +24,8 @@ TEST(VecBufferTest, FloatConstruction) {
 
 // Tests construction from existing array
 TEST(VecBufferTest, ConstructionFromArray) {
-  float data[3] = {1.0f, 2.0f, 3.0f};
-  VecBuffer<float> vec(data, 3);
+  std::array<float, 3> data = {1.0f, 2.0f, 3.0f};
+  VecBuffer<float> vec(data.data(), 3);
 
   EXPECT_EQ(vec.size(), 3);
   EXPECT_FLOAT_EQ(vec[0], 1.0f);

@@ -4,10 +4,40 @@ from grad.kernels import cpu_kernel  # type: ignore
 
 
 class TestBufferConstructors:
-    """Tests comparing both Buffer constructors."""
+    """Tests comparing all Buffer constructors."""
+
+    def test_filled(self):
+        buf1 = cpu_kernel.Buffer(5, "float32", 0)
+        assert buf1.size() == 5
+        for i in range(5):
+            assert buf1[i] == 0
+
+        buf1 = cpu_kernel.Buffer(2, "float32", 10)
+        assert buf1.size() == 2
+        for i in range(2):
+            assert buf1[i] == 10
+
+        buf1 = cpu_kernel.Buffer(2, "bool", False)
+        assert buf1.size() == 2
+        for i in range(10):
+            assert not buf1[i]
+
+        buf1 = cpu_kernel.Buffer(2, "bool", 0)
+        assert buf1.size() == 2
+        for i in range(2):
+            assert not buf1[i]
+
+        buf1 = cpu_kernel.Buffer(2, "bool", 1)
+        assert buf1.size() == 2
+        for i in range(2):
+            assert buf1[i]
+
+        buf1 = cpu_kernel.Buffer(2, "bool", 2)
+        for i in range(2):
+            assert buf1[i]
 
     def test_size_comparison(self):
-        buf1 = cpu_kernel.Buffer("float32", 5)
+        buf1 = cpu_kernel.Buffer(5, "float32")
         buf2 = cpu_kernel.Buffer([0.0, 1.0, 2.0, 3.0, 4.0], "f")
 
         assert buf1.size() == 5
@@ -24,12 +54,12 @@ class TestBufferConstructors:
         ]
 
         for old_dtype, new_fmt in dtypes:
-            buf1 = cpu_kernel.Buffer(old_dtype, 1)
+            buf1 = cpu_kernel.Buffer(1, old_dtype)
             buf2 = cpu_kernel.Buffer([0], new_fmt)
             assert buf1.get_dtype() == buf2.get_dtype() == old_dtype
 
     def test_set_get_comparison(self):
-        buf1 = cpu_kernel.Buffer("float32", 1)
+        buf1 = cpu_kernel.Buffer(1, "float32")
         buf2 = cpu_kernel.Buffer([0.0], "f")
 
         buf1[0] = 42.0
@@ -63,7 +93,7 @@ class TestBufferConstructors:
             cpu_kernel.Buffer([0], "invalid")
 
         with pytest.raises(RuntimeError):
-            cpu_kernel.Buffer("invalid", 1)
+            cpu_kernel.Buffer(1, "invalid")
 
     def test_buffer_from_sequence(self):
         values = [1.1, 2.2, 3.3, 4.4]
@@ -90,15 +120,15 @@ class TestBufferConstructors:
         assert buf[2] == pytest.approx(3.3)
 
     def test_old_constructor_initialization(self):
-        buf = cpu_kernel.Buffer("float32", 5)
+        buf = cpu_kernel.Buffer(5, "float32")
         for i in range(5):
             assert buf[i] == pytest.approx(0.0)
 
-        buf_int = cpu_kernel.Buffer("int32", 3)
+        buf_int = cpu_kernel.Buffer(3, "int32")
         for i in range(3):
             assert buf_int[i] == 0
 
-        buf_bool = cpu_kernel.Buffer("bool", 2)
+        buf_bool = cpu_kernel.Buffer(2, "bool")
         for i in range(2):
             assert not buf_bool[i]
 
@@ -106,7 +136,7 @@ class TestBufferConstructors:
         size = 10
         values = [float(i) for i in range(size)]
 
-        buf1 = cpu_kernel.Buffer("float32", size)
+        buf1 = cpu_kernel.Buffer(size, "float32")
         buf2 = cpu_kernel.Buffer(values, "f")
 
         for i, v in enumerate(values):

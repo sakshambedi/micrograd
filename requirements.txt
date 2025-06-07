@@ -3,3 +3,4 @@ numpy
 pre-commit
 psutil
 pytest
+reuse

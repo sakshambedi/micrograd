@@ -1,15 +1,7 @@
+// Copyright 2025 Saksham Bedi hello@sakshambedi.com
+// All rights reserved.
+
 #include "cpu_kernel.h"
-#include "Eigen/src/Core/Map.h"
-#include "Eigen/src/Core/Ref.h"
-#include "Eigen/src/Core/arch/Default/Half.h"
-#include "abstract.h"
-#include "pybind11/attr.h"
-#include "pybind11/cast.h"
-#include "pybind11/detail/common.h"
-#include "pybind11/detail/descr.h"
-#include "pybind11/pybind11.h"
-#include "pybind11/pytypes.h"
-#include "pytypedefs.h"
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -20,18 +12,27 @@
 #include <unordered_map>
 #include <variant>
 
+#include "Eigen/src/Core/Map.h"
+#include "Eigen/src/Core/Ref.h"
+#include "Eigen/src/Core/arch/Default/Half.h"
+#include "pybind11/attr.h"
+#include "pybind11/cast.h"
+#include "pybind11/detail/common.h"
+#include "pybind11/detail/descr.h"
+#include "pybind11/pybind11.h"
+#include "pybind11/pytypes.h"
+
 namespace py = pybind11;
 
 // pybind11 type_caster for Eigen::half
 namespace pybind11::detail {
 
 template <> struct type_caster<Eigen::half> {
-public:
 protected:
   Eigen ::half value;
 
 public:
-  static constexpr auto name = _("numpy.float16");
+  // static constexpr auto name = _("numpy.float16");
   template <
       typename T_,
       ::pybind11 ::detail ::enable_if_t<
@@ -63,9 +64,11 @@ public:
 
   // C++ → Python
   static handle cast(Eigen::half h, return_value_policy, handle) {
-    static py::object np = py::module_::import("numpy");
-    static py::object f16 = np.attr("float16");
-    return f16(static_cast<float>(h)).release();
+    // Commented out conversion to numpy.float16 to keep it simple
+    // static py::object np = py::module_::import("numpy");
+    // static py::object f16 = np.attr("float16");
+    // return f16(static_cast<float>(h)).release();
+    return py::float_(static_cast<float>(h)).release();
   }
 };
 
@@ -163,7 +166,7 @@ static void fill_from_sequence(VecBuffer<T> &dst, PyObject *seq_fast,
   }
 }
 
-Buffer::Buffer(const std::string &dtype, std::size_t size) {
+void Buffer::initialize_buffer(std::size_t size, const std::string &dtype) {
   DTypeEnum dtype_enum = get_dtype_enum(dtype);
   auto it = factory_table.find(dtype_enum);
   if (it != factory_table.end()) {
@@ -173,20 +176,39 @@ Buffer::Buffer(const std::string &dtype, std::size_t size) {
   }
 }
 
+void Buffer::initialize_buffer(std::size_t size, std::string_view dtype) {
+  DTypeEnum dtype_enum = get_dtype_enum(dtype);
+  auto it = factory_table.find(dtype_enum);
+  if (it != factory_table.end()) {
+    it->second(*this, size);
+  } else {
+    throw std::runtime_error("Unsupported dtype: " + std::string(dtype));
+  }
+}
+
+Buffer::Buffer(std::size_t size, const std::string &dtype) {
+  initialize_buffer(size, dtype);
+}
+
+Buffer::Buffer(std::size_t size, const std::string &dtype, py::object val) {
+  initialize_buffer(size, dtype);
+  std::visit(
+      [val, size](auto &buf) {
+        using T = typename std::decay_t<decltype(buf)>::Array::Scalar;
+        T casted_val = py::cast<T>(val);
+        for (std::size_t i = 0; i < size; ++i) {
+          buf[i] = casted_val;
+        }
+      },
+      buffer_);
+}
+
 Buffer::Buffer(py::sequence seq, std::string_view fmt) {
-  DTypeEnum dt = get_dtype_enum(fmt);
   PyObject *fast = PySequence_Fast(seq.ptr(), "expected list/tuple for Buffer");
   std::size_t n = PySequence_Fast_GET_SIZE(fast);
 
-  // Use existing factory_table to allocate the right VecBuffer<T>
-  auto it = factory_table.find(dt);
-  if (it == factory_table.end())
-    throw std::runtime_error("Unsupported dtype for sequence ctor");
+  initialize_buffer(n, fmt);
 
-  // Allocate empty buffer of size n
-  it->second(*this, n);
-
-  // Dispatch fill loop via std::visit
   std::visit(
       [&](auto &buf) {
         using BufT = std::decay_t<decltype(buf)>;
@@ -295,8 +317,10 @@ PYBIND11_MODULE(cpu_kernel, m) {
   py::class_<Buffer>(m, "Buffer")
       .def(py::init<py::sequence, std::string_view>(), py::arg("sequence"),
            py::arg("fmt"))
-      .def(py::init<const std::string &, std::size_t>(), py::arg("dtype"),
-           py::arg("size"))
+      .def(py::init<std::size_t, const std::string &>(), py::arg("size"),
+           py::arg("dtype"))
+      .def(py::init<std::size_t, const std::string &, py::object>(),
+           py::arg("size"), py::arg("dtype"), py::arg("value"))
       .def("__getitem__", &Buffer::get_item)
       .def("__setitem__", &Buffer::set_item)
       .def("size", &Buffer::size)
@@ -307,6 +331,7 @@ PYBIND11_MODULE(cpu_kernel, m) {
       .def(py::init<std::size_t>())
       .def("__getitem__",
            [](const VecBuffer<float> &v, std::size_t i) { return v[i]; })
+
       .def("__setitem__",
            [](VecBuffer<float> &v, std::size_t i, float val) { v[i] = val; })
       .def("size", &VecBuffer<float>::size)

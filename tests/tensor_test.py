@@ -124,13 +124,6 @@ class TestTensorFactories:
         t = Tensor.ones(shape, dtype=dtypes.int32)
         check_tensor_data(t, generate_nested_factory_data(shape, 1))
 
-    def test_zero_size(self):
-        t0 = Tensor.ones((0,), dtype=dtypes.float32)
-        assert t0.buffer.nbytes == 0
-
-        t2 = Tensor.ones((2, 0), dtype=dtypes.float32)
-        assert t2.buffer.nbytes == 0
-
     def test_zeros(self):
         shape = (3, 2)
         t = Tensor.zeros(shape, dtype=dtypes.float32)

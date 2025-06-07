@@ -46,9 +46,7 @@ def _unary_op(a: Tensor, op: Callable[[Any], Any]) -> Tensor:
 
         for i in range(prod(a.shape)):
             val_stored = a_memview[i]
-            # py_val = dtypes._from_storage(val_stored, a.dtype)
-            # result_py =
-            result_memview[i] = op(val_stored)  #  dtypes._to_storage(result_py, a.dtype)
+            result_memview[i] = op(val_stored)  # dtypes._to_storage(result_py, a.dtype)
     else:
         for idx in _nd_indices(a.shape):
             result[idx] = op(a[idx])

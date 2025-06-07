@@ -7,7 +7,7 @@ from grad.kernels import cpu_kernel  # type: ignore
 
 
 class Buffer:
-    __slots__ = ("dtype", "_storage", "_fmt", "numelem")
+    __slots__ = ("dtype", "_storage")
 
     def __init__(self, dtype: DTypeLike, iterable: list[Any], *, copy: bool = True):
         self.dtype: DType = to_dtype(dtype)
@@ -28,10 +28,10 @@ class Buffer:
     def to_list(self) -> list[Any]:
         return [val for val in self.iterstorage()]
 
-    def __del__(self): ...
+    def __del__(self): ...  # noqa : E704
 
     @staticmethod
-    def _make_buffer(type_: DTypeLike, iterable: Iterable[Any]) -> memoryview: ...
+    def _make_buffer(type_: DTypeLike, iterable: Iterable[Any]) -> memoryview: ...  # noqa : E704
 
     def clone(self) -> "Buffer":
         """Create a copy of this buffer"""
@@ -42,9 +42,11 @@ class Buffer:
         ...
 
     @classmethod
-    def _filled(
-        cls: type["Buffer"], dtype: DTypeLike, num_elem: int, val: int | float
-    ) -> "Buffer": ...
+    def _filled(cls, dtype: DTypeLike, num_elem: int, val: int | float) -> "Buffer":
+        buff = cls.__new__(cls)
+        buff.dtype = out_dtype = to_dtype(dtype)
+        buff._storage = cpu_kernel.Buffer(num_elem, out_dtype.fmt, val)
+        return buff
 
     def __getitem__(self, idx: int):
         return self._storage[idx]
@@ -54,4 +56,4 @@ class Buffer:
 
     def size_bytes(self) -> int:
         """Return the size of this buffer in bytes"""
-        return len(self._storage) * self._storage.itemsize if self._storage else 0
+        ...

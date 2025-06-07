@@ -13,7 +13,7 @@ if [[ "$OS" == "Darwin" ]]; then
     if ! command -v brew &>/dev/null; then
         echo "Homebrew not found. Installing Homebrew..."
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-        
+
         # Add Homebrew to PATH for the current session if it was just installed
         if [[ -f "/opt/homebrew/bin/brew" ]]; then
             eval "$(/opt/homebrew/bin/brew shellenv)"
@@ -22,14 +22,14 @@ if [[ "$OS" == "Darwin" ]]; then
         fi
         echo "Homebrew installed and configured."
     fi
-    
+
     echo "Updating Homebrew and installing packages..."
     brew update
     brew install cmake eigen python@3 git
 elif [[ "$OS" == "Linux" ]]; then
     # Linux (Debian/Ubuntu)
     echo "Installing prerequisites for Linux..."
-    
+
     # Check if we can use apt-get (Debian/Ubuntu)
     if command -v apt-get &>/dev/null; then
         echo "Detected Debian/Ubuntu-based distribution"

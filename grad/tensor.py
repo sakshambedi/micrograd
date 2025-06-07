@@ -234,7 +234,7 @@ class Tensor:
     def matmul(t1: Tensor, t2: Tensor, /, dtype: dtypes | None = None): ...  # noqa : E704
 
     @staticmethod
-    def mean(t: Tensor, /, axis: int = 0) -> Tensor: ...
+    def mean(t: Tensor, /, axis: int = 0) -> Tensor: ...  # noqa : E704
 
     @staticmethod
     def sum(
@@ -343,19 +343,14 @@ class Tensor:
         dtype: DTypeLike = dtypes.float32,
         device: str = "cpu",
         requires_grad: Optional[bool] = None,
-        w,
     ) -> Tensor:
         """Internal method for creating tensors filled with a value."""
         inst: Tensor = cls.__new__(cls)
         inst.storage = Buffer._filled(dtype, _prod(shape), value)
         inst.shape = tuple(shape)
         inst._stride = tensor_stride(inst.shape)
-        inst.device = device
-        inst.requires_grad = requires_grad
-        inst.grad = None
-        inst.grad_fn = None
-        inst._contiguous = True
-        inst.base_offset = 0
+        inst.device, inst.requires_grad = device, requires_grad
+        inst.grad, inst.grad_fn, inst._contiguous, inst.base_offset = None, None, True, 0
         return inst
 
     def _create_view(
@@ -414,50 +409,26 @@ class Tensor:
 
     def _to_nested(self) -> Any:
         """Convert the flat buffer to a nested list structure matching the tensor's shape."""
-        # Handle empty tensors
+
         if not self.shape or _prod(self.shape) == 0:
-            if not self.shape:  # scalar case with empty shape
+            if not self.shape:
                 return None if self.storage is None else self.storage[0]
 
-            # Empty tensor with dimensions
             return [self._nest([], list(self.shape[1:])) for _ in range(self.shape[0])]
 
-        # Check if storage exists
         if self.storage is None:
             raise AttributeError("Tensor with data is not initialized yet!")
 
-        # Contiguous tensor case - more efficient
+        # Contiguous tensor case
         if self._contiguous:
             flat = self.storage.to_list()
             return self._nest(flat, list(self.shape))
 
-        # Non-contiguous tensor case - need to go through indices
+        # Non-contiguous tensor - need to go through indices
         flat_ordered_data = []
         for idx in _nd_indices(self.shape):
             flat_ordered_data.append(self.__getitem__(idx))
-
         return self._nest(flat_ordered_data, list(self.shape))
-
-    # def _to_nested(self) -> Any:
-    #     """Convert the flat buffer to a nested list structure matching the tensor's shape."""
-    #     if _prod(self.shape) == 0:
-    #         if not self.shape:
-    #             return [] if self.storage and _prod(self.shape) == 0 else None
-
-    #         return [self._nest([], list(self.shape[1:])) for _ in range(self.shape[0])]
-
-    #     if self.storage is None:
-    #         raise AttributeError("Tensor with data is not initialized yet!")
-
-    #     if self._contiguous:
-    #         flat = self.storage.to_list()
-    #         return self._nest(flat, list(self.shape))
-
-    #     flat_ordered_data = []
-    #     for idx in _nd_indices(self.shape):
-    #         flat_ordered_data.append(self.__getitem__(idx))
-
-    #     return self._nest(flat_ordered_data, list(self.shape))
 
     @staticmethod
     def _nest(flat: list[Any], dims: list[int]) -> Any:

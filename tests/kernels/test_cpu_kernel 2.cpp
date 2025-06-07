@@ -74,7 +74,7 @@ TEST(BufferTest, InitializeWithValue) {
               static_cast<int64_t>(-9223372036854775807));
   }
 
-  Buffer u8buf(3, "uint8", py::cast(static_cast<uint8_t>(255)));
+  Buffer u8buf(3, "uint8", py::cast(uint8_t(255)));
   for (std::size_t i = 0; i < u8buf.size(); ++i) {
     EXPECT_EQ(py::cast<uint8_t>(u8buf.get_item(i)), uint8_t(255));
   }

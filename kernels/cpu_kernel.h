@@ -1,20 +1,22 @@
+// Copyright 2025 Saksham Bedi hello@sakshambedi.com
+// All rights reserved.
+
 #pragma once
+
+#include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <variant>
 
 #include "pybind11/pytypes.h"
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/StdVector>
-#include <cstddef>
-#include <cstdint>
-#include <functional>
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
-// #include <string>
-// #include <string>
-#include <string_view>
-// #include <type_traits>
-#include <unordered_map>
-#include <variant>
 
 namespace py = pybind11;
 
@@ -43,6 +45,7 @@ public:
 
 private:
   Array data_;
+  // std::shared_ptr<Array> data_;
   explicit VecBuffer(const Array &a);
 };
 
@@ -71,7 +74,8 @@ extern const std::unordered_map<DTypeEnum,
 
 class Buffer {
 public:
-  explicit Buffer(const std::string &dtype, std::size_t size);
+  explicit Buffer(std::size_t size, const std::string &dtype);
+  explicit Buffer(std::size_t size, const std::string &dtype, py::object val);
   explicit Buffer(py::sequence seq, std::string_view fmt);
 
   std::size_t size() const;
@@ -85,6 +89,10 @@ public:
   }
 
 private:
+  // Helper method to initialize the buffer with a given size and dtype
+  void initialize_buffer(std::size_t size, const std::string &dtype);
+  void initialize_buffer(std::size_t size, std::string_view dtype);
+
   using BufferVariant =
       std::variant<VecBuffer<bool>, VecBuffer<std::int8_t>,
                    VecBuffer<std::uint8_t>, VecBuffer<int16_t>,

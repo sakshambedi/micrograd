@@ -1,10 +1,11 @@
+// Copyright 2025 Saksham Bedi hello@sakshambedi.com
+// All rights reserved.
 #include "../../kernels/cpu_kernel.h"
 #include <gtest/gtest.h>
 #include <string>
 
 // Test DTypeEnum conversions for all supported data types
 TEST(DTypeEnumTest, AllTypeConversions) {
-
   EXPECT_EQ(get_dtype_enum("bool"), DTypeEnum::BOOL);
   EXPECT_EQ(get_dtype_enum("int8"), DTypeEnum::INT8);
   EXPECT_EQ(get_dtype_enum("uint8"), DTypeEnum::UINT8);
@@ -42,14 +43,12 @@ TEST(DTypeEnumTest, UnknownTypes) {
 }
 
 TEST(DTypeEnumTest, CaseSensitivity) {
-
   EXPECT_NE(get_dtype_enum("FLOAT32"), DTypeEnum::FLOAT32);
   EXPECT_NE(get_dtype_enum("Float32"), DTypeEnum::FLOAT32);
   EXPECT_EQ(get_dtype_enum("FLOAT32"), DTypeEnum::UNKNOWN);
 }
 
 TEST(DTypeEnumTest, WhitespaceHandling) {
-
   EXPECT_EQ(get_dtype_enum(" float32"), DTypeEnum::UNKNOWN);
   EXPECT_EQ(get_dtype_enum("float32 "), DTypeEnum::UNKNOWN);
   EXPECT_EQ(get_dtype_enum("float 32"), DTypeEnum::UNKNOWN);
