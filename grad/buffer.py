@@ -11,6 +11,7 @@ class Buffer:
 
     def __init__(self, dtype: DTypeLike, iterable: list[Any], *, copy: bool = True):
         self.dtype: DType = to_dtype(dtype)
+        print(f"buffer: {self.dtype} , {self.dtype.fmt}")
         self._storage = cpu_kernel.Buffer(iterable, self.dtype.fmt)
 
     def to(self, device: Device): ...  # noqa: E704
@@ -49,6 +50,8 @@ class Buffer:
         return buff
 
     def __getitem__(self, idx: int):
+        if idx < 0 or idx >= len(self):
+            raise IndexError(f"Buffer index {idx} out of range")
         return self._storage[idx]
 
     def __setitem__(self, idx: int, value: Any) -> None:

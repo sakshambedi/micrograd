@@ -64,10 +64,6 @@ public:
 
   // C++ → Python
   static handle cast(Eigen::half h, return_value_policy, handle) {
-    // Commented out conversion to numpy.float16 to keep it simple
-    // static py::object np = py::module_::import("numpy");
-    // static py::object f16 = np.attr("float16");
-    // return f16(static_cast<float>(h)).release();
     return py::float_(static_cast<float>(h)).release();
   }
 };
@@ -160,9 +156,18 @@ static void fill_from_sequence(VecBuffer<T> &dst, PyObject *seq_fast,
   T *out = dst.data();
   for (std::size_t i = 0; i < n; ++i) {
     PyObject *item = PySequence_Fast_GET_ITEM(seq_fast, i); // borrowed ref
-    // pybind11::cast is safe & fast inside C++ (holds GIL)
-    // out[i] = py::cast<T>(item);
-    out[i] = py::cast<T>(py::handle(item));
+    py::handle h(item);
+
+    if constexpr (std::is_integral_v<T> && !std::is_same_v<T, bool>) {
+      // For integer types, handle float conversion explicitly
+      if (PyFloat_Check(item)) {
+        out[i] = static_cast<T>(PyFloat_AsDouble(item));
+      } else {
+        out[i] = py::cast<T>(h);
+      }
+    } else {
+      out[i] = py::cast<T>(h);
+    }
   }
 }
 

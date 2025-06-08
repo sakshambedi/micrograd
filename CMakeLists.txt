@@ -15,8 +15,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(pybind11)
 
-# Find Python
-# find_package(Python 3.7 COMPONENTS Interpreter Development REQUIRED)
+
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 
 # Create a static library for testing
@@ -26,14 +25,14 @@ target_include_directories(cpu_kernel_lib PRIVATE
     ${pybind11_SOURCE_DIR}/include
 )
 
-# Create the pybind11 module library
+
 pybind11_add_module(cpu_kernel kernels/cpu_kernel.cpp)
 target_include_directories(cpu_kernel PRIVATE
     ${PYTHON_INCLUDE_DIRS}
 )
-# target_include_directories(test_cpu_kernel PRIVATE ${Python3_INCLUDE_DIRS})
 
-# GoogleTest setup
+
+
 FetchContent_Declare(
     googletest
     URL https://github.com/google/googletest/archive/refs/heads/main.zip
