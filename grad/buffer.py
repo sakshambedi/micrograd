@@ -21,6 +21,17 @@ class Buffer:
     def __repr__(self) -> str:
         return str(self.to_list())
 
+    def share(self) -> "Buffer":
+        """Return a new Buffer instance that shares underlying storage."""
+        new_buff = Buffer.__new__(Buffer)
+        new_buff.dtype = self.dtype
+        new_buff._storage = self._storage
+        return new_buff
+
+    def shares_storage_with(self, other: "Buffer") -> bool:
+        """Check if this buffer shares its storage with ``other``."""
+        return self._storage is getattr(other, "_storage", None)
+
     def iterstorage(self) -> Iterable[Any]:
         for i in range(self.__len__()):
             yield self._storage[i]
@@ -35,11 +46,16 @@ class Buffer:
 
     def clone(self) -> "Buffer":
         """Create a copy of this buffer"""
-        ...
+        return Buffer(self.dtype, self.to_list())
 
     def resize(self, new_size: int) -> "Buffer":
         """Create a new buffer with different size, preserving existing data where possible"""
-        ...
+        current_data = self.to_list()
+        if new_size > len(current_data):
+            current_data.extend([0] * (new_size - len(current_data)))
+        else:
+            current_data = current_data[:new_size]
+        return Buffer(self.dtype, current_data)
 
     @classmethod
     def _filled(cls, dtype: DTypeLike, num_elem: int, val: int | float) -> "Buffer":
@@ -58,4 +74,4 @@ class Buffer:
 
     def size_bytes(self) -> int:
         """Return the size of this buffer in bytes"""
-        ...
+        return len(self) * self.dtype.itemsize
