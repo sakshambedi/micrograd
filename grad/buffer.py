@@ -9,9 +9,8 @@ from grad.kernels import cpu_kernel  # type: ignore
 class Buffer:
     __slots__ = ("dtype", "_storage")
 
-    def __init__(self, dtype: DTypeLike, iterable: list[Any], *, copy: bool = True):
+    def __init__(self, dtype: DTypeLike, iterable: Iterable[Any], *, copy: bool = True):
         self.dtype: DType = to_dtype(dtype)
-        print(f"buffer: {self.dtype} , {self.dtype.fmt}")
         self._storage = cpu_kernel.Buffer(iterable, self.dtype.fmt)
 
     def to(self, device: Device): ...  # noqa: E704

@@ -6,7 +6,6 @@ from grad.dtype import dtypes, to_dtype
 
 class TestBuffer:
     def test_init_with_list(self):
-        # Test initialization with different data types
         b = Buffer(dtypes.float32, [1.0, 2.0, 3.0])
         assert len(b) == 3
         assert b.dtype.name == "float32"
@@ -23,14 +22,13 @@ class TestBuffer:
         assert b.to_list() == [True, False, True]
 
     def test_type_conversion(self):
-        # Test that values are properly converted to the buffer's dtype
-        b = Buffer("float32", [1, 2, 3])  # integers should convert to floats
+        b = Buffer("float32", [1, 2, 3])
         assert all(isinstance(val, float) for val in b.iterstorage())
 
-        b = Buffer("int32", [1.5, 2.7, 3.9])  # floats should truncate to int
+        b = Buffer("int32", [1.5, 2.7, 3.9])
         assert b.to_list() == [1, 2, 3]
 
-        b = Buffer("bool", [1.0, 0.0, 0.5])  # non-zero converts to True
+        b = Buffer("bool", [1.0, 0.0, 0.5])
         assert b.to_list() == [True, False, True]
 
     def test_empty_buffer(self):
@@ -39,12 +37,10 @@ class TestBuffer:
         assert b.to_list() == []
 
     def test_filled_buffer(self):
-        # Test _filled class method
         b = Buffer._filled(dtypes.float16, 5, 3.14)
         assert len(b) == 5
         assert all(abs(val - 3.14) < 1e-3 for val in b.to_list())
 
-        # Float32 test with tolerance
         b = Buffer._filled("float32", 4, 3.12)
         assert len(b) == 4
         assert all(abs(val - 3.12) < 1e-6 for val in b.to_list())
