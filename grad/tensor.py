@@ -367,7 +367,7 @@ class Tensor:
         result.device = self.device
         result.requires_grad = self.requires_grad
         result.grad, result.grad_fn, result._contiguous = None, None, False
-        result.storage = self.storage
+        result.storage = self.storage.share() if self.storage is not None else None
         result.base_offset = 0 if base_offset is None else base_offset
         return result
 

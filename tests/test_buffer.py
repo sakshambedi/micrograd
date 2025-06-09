@@ -139,3 +139,19 @@ class TestBuffer:
         assert len(recovered) == len(original)
         for orig, rec in zip(original, recovered):
             assert abs(orig - rec) < 1e-5
+
+    def test_share_and_clone(self):
+        b = Buffer("float32", [1.0, 2.0, 3.0])
+        shared = b.share()
+        assert shared.to_list() == [1.0, 2.0, 3.0]
+        assert b.shares_storage_with(shared)
+
+        shared[0] = 10.0
+        # modifying shared should reflect in original
+        assert b[0] == 10.0
+
+        clone = b.clone()
+        assert not clone.shares_storage_with(b)
+        clone[1] = -5.0
+        # original unaffected
+        assert b[1] != -5.0
