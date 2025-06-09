@@ -343,7 +343,6 @@ class Tensor:
         dtype: DTypeLike = dtypes.float32,
         device: str = "cpu",
         requires_grad: Optional[bool] = None,
-        w,
     ) -> Tensor:
         """Internal method for creating tensors filled with a value."""
         inst: Tensor = cls.__new__(cls)
@@ -372,7 +371,7 @@ class Tensor:
         result.device = self.device
         result.requires_grad = self.requires_grad
         result.grad, result.grad_fn, result._contiguous = None, None, False
-        result.storage = self.storage
+        result.storage = None if self.storage is None else self.storage.share()
         result.base_offset = 0 if base_offset is None else base_offset
         return result
 
