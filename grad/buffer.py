@@ -29,7 +29,7 @@ class Buffer:
         return new_buff
 
     def shares_storage_with(self, other: "Buffer") -> bool:
-        """Check if this buffer shares its storage with ``other``."""
+        """Check if this buffer shares its storage with other."""
         return self._storage is getattr(other, "_storage", None)
 
     def iterstorage(self) -> Iterable[Any]:

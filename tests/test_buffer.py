@@ -147,11 +147,9 @@ class TestBuffer:
         assert b.shares_storage_with(shared)
 
         shared[0] = 10.0
-        # modifying shared should reflect in original
         assert b[0] == 10.0
 
         clone = b.clone()
         assert not clone.shares_storage_with(b)
         clone[1] = -5.0
-        # original unaffected
         assert b[1] != -5.0
