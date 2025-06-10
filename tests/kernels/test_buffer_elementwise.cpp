@@ -33,7 +33,7 @@ TEST_F(BufferAddTestSetup, SameTypeAddition) {
     buf2.set_item(i, static_cast<float>(2 * i + 1));
   }
 
-  Buffer result = buf1.add(buf2);
+  Buffer result = add(buf1, buf2);
   EXPECT_EQ(result.get_dtype(), "float32");
   EXPECT_EQ(result.size(), 4);
 
@@ -60,7 +60,7 @@ TEST_F(BufferAddTestSetup, SameTypeAddition) {
     buf2.set_item(1, 2);
     buf2.set_item(2, 3);
 
-    Buffer result = buf1.add(buf2);
+    Buffer result = add(buf1, buf2);
     EXPECT_EQ(result.get_dtype(), "int32");
     EXPECT_EQ(result.size(), 3);
 
@@ -82,7 +82,7 @@ TEST_F(BufferAddTestSetup, SameTypeAddition) {
     buf2.set_item(1, 1.0);
     buf2.set_item(2, 1.5);
 
-    Buffer result = buf1.add(buf2);
+    Buffer result = add(buf1, buf2);
     EXPECT_EQ(result.get_dtype(), "float64");
 
     EXPECT_DOUBLE_EQ(result.get_item(0).cast<double>(), 2.0);
@@ -105,7 +105,7 @@ TEST_F(BufferAddTestSetup, SameTypeAddition) {
     buf2.set_item(2, 1); // true
     buf2.set_item(3, 1); // true
 
-    Buffer result = buf1.add(buf2);
+    Buffer result = add(buf1, buf2);
     EXPECT_EQ(result.get_dtype(), "bool");
 
     EXPECT_EQ(result.get_item(0).cast<bool>(), false); // false + false = false
@@ -119,7 +119,7 @@ TEST_F(BufferAddTestSetup, SameTypeAddition) {
     Buffer buf1(0, "float32");
     Buffer buf2(0, "float32");
 
-    Buffer result = buf1.add(buf2);
+    Buffer result = add(buf1, buf2);
     EXPECT_EQ(result.size(), 0);
     EXPECT_EQ(result.get_dtype(), "float32");
   }
@@ -145,7 +145,7 @@ TEST_F(BufferAddTestSetup, DifferentTypeAddition) {
     buf2.set_item(1, 1.5);
     buf2.set_item(2, 2.5);
 
-    Buffer result = buf1.add(buf2, "float32");
+    Buffer result = add(buf1, buf2, "float32");
     EXPECT_EQ(result.get_dtype(), "float32");
 
     EXPECT_FLOAT_EQ(result.get_item(0).cast<float>(), 10.5f);
@@ -166,7 +166,7 @@ TEST_F(BufferAddTestSetup, DifferentTypeAddition) {
     buf2.set_item(1, 1.75);
     buf2.set_item(2, 2.75);
 
-    Buffer result = buf1.add(buf2, "float64");
+    Buffer result = add(buf1, buf2, "float64");
     EXPECT_EQ(result.get_dtype(), "float64");
 
     EXPECT_DOUBLE_EQ(result.get_item(0).cast<double>(), 2.0);
@@ -188,7 +188,7 @@ TEST_F(BufferAddTestSetup, DifferentTypeAddition) {
     buf2.set_item(2, 15);
 
     EXPECT_NO_THROW({
-      Buffer result = buf1.add(buf2, "int16");
+      Buffer result = add(buf1, buf2, "int16");
       EXPECT_EQ(result.get_dtype(), "int16");
 
       EXPECT_EQ(result.get_item(0).cast<int16_t>(), 15);
@@ -213,7 +213,7 @@ TEST_F(BufferAddTestSetup, DifferentTypeAddition) {
     buf2.set_item(3, 400);
 
     EXPECT_NO_THROW({
-      Buffer result = buf1.add(buf2, "int32");
+      Buffer result = add(buf1, buf2, "int32");
       EXPECT_EQ(result.get_dtype(), "int32");
 
       EXPECT_EQ(result.get_item(0).cast<int32_t>(), 100); // false + 100 = 100
@@ -237,7 +237,7 @@ TEST_F(BufferAddTestSetup, DifferentTypeAddition) {
     buf2.set_item(2, 2.5);
 
     EXPECT_NO_THROW({
-      Buffer result = buf1.add(buf2, "float32");
+      Buffer result = add(buf1, buf2, "float32");
       EXPECT_EQ(result.get_dtype(), "float32");
 
       // Using near because float16 has limited precision
@@ -260,7 +260,7 @@ TEST_F(BufferAddTestSetup, ErrorCases) {
     Buffer buf1(3, "float32");
     Buffer buf2(4, "float32");
 
-    EXPECT_THROW(buf1.add(buf2), std::runtime_error);
+    EXPECT_THROW(add(buf1, buf2), std::runtime_error);
   }
 
   // Test with invalid output dtype
@@ -268,6 +268,6 @@ TEST_F(BufferAddTestSetup, ErrorCases) {
     Buffer buf1(3, "float32");
     Buffer buf2(3, "float32");
 
-    EXPECT_THROW(buf1.add(buf2, "invalid_dtype"), std::runtime_error);
+    EXPECT_THROW(add(buf1, buf2, "invalid_dtype"), std::runtime_error);
   }
 }

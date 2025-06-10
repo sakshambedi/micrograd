@@ -3,8 +3,10 @@
 
 """Test script for Buffer add functionality."""
 
-from grad.kernels.cpu_kernel import Buffer
+from grad.kernels import cpu_kernel
 import unittest
+
+Buffer = cpu_kernel.Buffer
 
 
 class TestBufferAdd(unittest.TestCase):
@@ -15,7 +17,7 @@ class TestBufferAdd(unittest.TestCase):
         b = Buffer([5, 4, 3, 2, 1], "float32")
 
         # Default output type (same as inputs)
-        c = a.add(b)
+        c = cpu_kernel.add(a, b)
         self.assertEqual(c.get_dtype(), "float32")
         self.assertEqual(c.size(), 5)
         for i in range(5):
@@ -33,7 +35,7 @@ class TestBufferAdd(unittest.TestCase):
         b = Buffer([0.5, 1.5, 2.5], "float32")
 
         # Result should be float32 (higher precision)
-        c = a.add(b)
+        c = cpu_kernel.add(a, b)
         self.assertEqual(c.get_dtype(), "float32")
         self.assertEqual(c[0], 1.5)
         self.assertEqual(c[1], 3.5)
@@ -45,7 +47,7 @@ class TestBufferAdd(unittest.TestCase):
         b = Buffer([4, 5, 6], "int32")
 
         # Force result to be float64
-        c = a.add(b, "float64")
+        c = cpu_kernel.add(a, b, "float64")
         self.assertEqual(c.get_dtype(), "float64")
         for i in range(3):
             self.assertEqual(c[i], float(a[i] + b[i]))
@@ -56,7 +58,7 @@ class TestBufferAdd(unittest.TestCase):
         b = Buffer([1000, 2000, 3000], "int32")
 
         # Should promote to int32
-        c = a.add(b)
+        c = cpu_kernel.add(a, b)
         self.assertEqual(c.get_dtype(), "int32")
         for i in range(3):
             self.assertEqual(c[i], a[i] + b[i])
@@ -67,7 +69,7 @@ class TestBufferAdd(unittest.TestCase):
         b = Buffer([0.5, 1.5, 2.5], "float64")
 
         # Should promote to float64
-        c = a.add(b)
+        c = cpu_kernel.add(a, b)
         self.assertEqual(c.get_dtype(), "float64")
         for i in range(3):
             self.assertEqual(c[i], a[i] + b[i])
