@@ -110,7 +110,6 @@ public:
                    VecBuffer<uint16_t>, VecBuffer<int32_t>, VecBuffer<uint32_t>,
                    VecBuffer<int64_t>, VecBuffer<uint64_t>, VecBuffer<float>,
                    VecBuffer<double>, VecBuffer<Eigen::half>>;
-
   explicit Buffer(std::size_t size, const std::string &dtype);
   explicit Buffer(std::size_t size, const std::string &dtype, py::object val);
   explicit Buffer(py::sequence seq, std::string_view fmt);
