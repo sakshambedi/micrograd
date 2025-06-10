@@ -4,12 +4,17 @@ import sys
 import pybind11
 from setuptools import Extension, find_packages, setup
 
-extra_compile_args = ["-std=c++17", "-O3"]
+extra_compile_args = [
+    "-std=c++17",
+    "-O3",
+    "-ffast-math",
+    "-DEIGEN_MAX_ALIGN_BYTES=64",
+]
 if sys.platform == "darwin":
-    extra_compile_args += ["-stdlib=libc++", "-mmacosx-version-min=10.9"]
+    extra_compile_args += ["-stdlib=libc++", "-mmacosx-version-min=10.9", "-mcpu=apple-m1"]
 elif sys.platform == "win32":
     extra_compile_args = ["/EHsc", "-march=native"]
-else:  # Linux
+else:
     extra_compile_args += ["-fPIC", "-march=native"]
 ext_modules = [
     Extension(

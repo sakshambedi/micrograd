@@ -70,6 +70,92 @@ public:
 
 } // namespace pybind11::detail
 
+void init_kernel_table() {
+
+  reg<EwOp::ADD, bool, bool, bool>(DTypeEnum::BOOL, DTypeEnum::BOOL,
+                                   DTypeEnum::BOOL);
+  reg<EwOp::ADD, bool, std::int8_t, std::int8_t>(
+      DTypeEnum::BOOL, DTypeEnum::INT8, DTypeEnum::INT8);
+  reg<EwOp::ADD, std::int8_t, bool, std::int8_t>(
+      DTypeEnum::INT8, DTypeEnum::BOOL, DTypeEnum::INT8);
+  reg<EwOp::ADD, bool, std::int32_t, std::int32_t>(
+      DTypeEnum::BOOL, DTypeEnum::INT32, DTypeEnum::INT32);
+  reg<EwOp::ADD, std::int32_t, bool, std::int32_t>(
+      DTypeEnum::INT32, DTypeEnum::BOOL, DTypeEnum::INT32);
+
+  // Register ADD kernels for int8 types
+  reg<EwOp::ADD, std::int8_t, std::int8_t, std::int8_t>(
+      DTypeEnum::INT8, DTypeEnum::INT8, DTypeEnum::INT8);
+  reg<EwOp::ADD, std::int8_t, std::uint8_t, std::int16_t>(
+      DTypeEnum::INT8, DTypeEnum::UINT8, DTypeEnum::INT16);
+  reg<EwOp::ADD, std::uint8_t, std::int8_t, std::int16_t>(
+      DTypeEnum::UINT8, DTypeEnum::INT8, DTypeEnum::INT16);
+  reg<EwOp::ADD, std::uint8_t, std::uint8_t, std::uint8_t>(
+      DTypeEnum::UINT8, DTypeEnum::UINT8, DTypeEnum::UINT8);
+
+  // Register ADD kernels for int16 types
+  reg<EwOp::ADD, std::int16_t, std::int16_t, std::int16_t>(
+      DTypeEnum::INT16, DTypeEnum::INT16, DTypeEnum::INT16);
+
+  // Register ADD kernels for int32 types
+  reg<EwOp::ADD, std::int32_t, std::int32_t, std::int32_t>(
+      DTypeEnum::INT32, DTypeEnum::INT32, DTypeEnum::INT32);
+
+  // Register float kernels which are commonly used
+  reg<EwOp::ADD, float, float, float>(DTypeEnum::FLOAT32, DTypeEnum::FLOAT32,
+                                      DTypeEnum::FLOAT32);
+  reg<EwOp::ADD, double, double, double>(DTypeEnum::FLOAT64, DTypeEnum::FLOAT64,
+                                         DTypeEnum::FLOAT64);
+  reg<EwOp::ADD, float, double, double>(DTypeEnum::FLOAT32, DTypeEnum::FLOAT64,
+                                        DTypeEnum::FLOAT64);
+  reg<EwOp::ADD, double, float, double>(DTypeEnum::FLOAT64, DTypeEnum::FLOAT32,
+                                        DTypeEnum::FLOAT64);
+
+  // Register half-precision floating point operations
+  reg<EwOp::ADD, Eigen::half, Eigen::half, Eigen::half>(
+      DTypeEnum::FLOAT16, DTypeEnum::FLOAT16, DTypeEnum::FLOAT16);
+  reg<EwOp::ADD, Eigen::half, float, float>(
+      DTypeEnum::FLOAT16, DTypeEnum::FLOAT32, DTypeEnum::FLOAT32);
+  reg<EwOp::ADD, float, Eigen::half, float>(
+      DTypeEnum::FLOAT32, DTypeEnum::FLOAT16, DTypeEnum::FLOAT32);
+  reg<EwOp::ADD, Eigen::half, double, double>(
+      DTypeEnum::FLOAT16, DTypeEnum::FLOAT64, DTypeEnum::FLOAT64);
+  reg<EwOp::ADD, double, Eigen::half, double>(
+      DTypeEnum::FLOAT64, DTypeEnum::FLOAT16, DTypeEnum::FLOAT64);
+
+  // Integer to float conversions
+  reg<EwOp::ADD, std::int32_t, float, float>(
+      DTypeEnum::INT32, DTypeEnum::FLOAT32, DTypeEnum::FLOAT32);
+  reg<EwOp::ADD, float, std::int32_t, float>(
+      DTypeEnum::FLOAT32, DTypeEnum::INT32, DTypeEnum::FLOAT32);
+
+  // Bool type operations
+  reg<EwOp::ADD, bool, bool, bool>(DTypeEnum::BOOL, DTypeEnum::BOOL,
+                                   DTypeEnum::BOOL);
+  reg<EwOp::ADD, bool, std::int32_t, std::int32_t>(
+      DTypeEnum::BOOL, DTypeEnum::INT32, DTypeEnum::INT32);
+  reg<EwOp::ADD, std::int32_t, bool, std::int32_t>(
+      DTypeEnum::INT32, DTypeEnum::BOOL, DTypeEnum::INT32);
+  reg<EwOp::ADD, bool, float, float>(DTypeEnum::BOOL, DTypeEnum::FLOAT32,
+                                     DTypeEnum::FLOAT32);
+  reg<EwOp::ADD, float, bool, float>(DTypeEnum::FLOAT32, DTypeEnum::BOOL,
+                                     DTypeEnum::FLOAT32);
+
+  // Additional integer conversions
+  reg<EwOp::ADD, std::int16_t, std::int8_t, std::int16_t>(
+      DTypeEnum::INT16, DTypeEnum::INT8, DTypeEnum::INT16);
+  reg<EwOp::ADD, std::int8_t, std::int16_t, std::int16_t>(
+      DTypeEnum::INT8, DTypeEnum::INT16, DTypeEnum::INT16);
+  reg<EwOp::ADD, std::int32_t, std::int16_t, std::int32_t>(
+      DTypeEnum::INT32, DTypeEnum::INT16, DTypeEnum::INT32);
+  reg<EwOp::ADD, std::int16_t, std::int32_t, std::int32_t>(
+      DTypeEnum::INT16, DTypeEnum::INT32, DTypeEnum::INT32);
+  reg<EwOp::ADD, std::int64_t, std::int64_t, std::int64_t>(
+      DTypeEnum::INT64, DTypeEnum::INT64, DTypeEnum::INT64);
+
+  // No need to set initialized flag as we always want to initialize
+}
+
 // --- VecBuffer Implementation ---
 template <typename T> VecBuffer<T>::VecBuffer(std::size_t n) : data_(n) {}
 
@@ -303,6 +389,175 @@ std::string Buffer::get_dtype() const {
       buffer_);
 }
 
+// --- Kernel template --------------------------------------------------------
+template <EwOp OP, class A, class B, class R>
+static void ew_kernel(const void *a_raw, const void *b_raw, void *r_raw,
+                      std::size_t n) {
+  using ArrA = Eigen::Array<A, Eigen::Dynamic, 1>;
+  using ArrB = Eigen::Array<B, Eigen::Dynamic, 1>;
+  using ArrR = Eigen::Array<R, Eigen::Dynamic, 1>;
+
+  Eigen::Map<const ArrA> lhs(reinterpret_cast<const A *>(a_raw), n);
+  Eigen::Map<const ArrB> rhs(reinterpret_cast<const B *>(b_raw), n);
+  Eigen::Map<ArrR> dst(reinterpret_cast<R *>(r_raw), n);
+
+  auto lhsR = lhs.template cast<R>();
+  auto rhsR = rhs.template cast<R>();
+
+  if constexpr (OP == EwOp::ADD)
+    dst = lhsR + rhsR;
+  else if constexpr (OP == EwOp::MUL)
+    dst = lhsR * rhsR;
+  else if constexpr (OP == EwOp::DIV)
+    dst = lhsR / rhsR;
+  else if constexpr (OP == EwOp::SUB)
+    dst = lhsR - rhsR;
+}
+
+template <EwOp OP, class A, class B, class R>
+static void reg(DTypeEnum a, DTypeEnum b, DTypeEnum r) {
+  TABLE[static_cast<std::size_t>(OP)][static_cast<std::size_t>(a)]
+       [static_cast<std::size_t>(b)][static_cast<std::size_t>(r)] =
+           &ew_kernel<OP, A, B, R>;
+}
+
+template <EwOp OP>
+Buffer Buffer::ewise(const Buffer &other, const std::string &out_dtype) const {
+  // Ensure the kernel table is initialized
+  static bool initialized = false;
+  if (!initialized) {
+    init_kernel_table();
+    initialized = true;
+  }
+
+  if (size() != other.size())
+    throw std::runtime_error("size mismatch");
+
+  if (get_dtype_enum(out_dtype) == DTypeEnum::UNKNOWN)
+    throw std::runtime_error("invalid output dtype: " + out_dtype);
+
+  const std::size_t n = size();
+  const DTypeEnum lhs = get_dtype_enum(get_dtype());
+  const DTypeEnum rhs = get_dtype_enum(other.get_dtype());
+  const DTypeEnum out = get_dtype_enum(out_dtype);
+
+  KernFn fn =
+      TABLE[static_cast<std::size_t>(OP)][static_cast<std::size_t>(lhs)]
+           [static_cast<std::size_t>(rhs)][static_cast<std::size_t>(out)];
+  if (!fn)
+    throw std::runtime_error("unsupported dtype combination: " + get_dtype() +
+                             " + " + other.get_dtype() + " -> " + out_dtype);
+
+  Buffer result(n, out_dtype);
+
+  std::visit(
+      [&](const auto &l) {
+        std::visit(
+            [&](const auto &r) {
+              std::visit([&](auto &o) { fn(l.data(), r.data(), o.data(), n); },
+                         result.buffer_);
+            },
+            other.buffer_);
+      },
+      buffer_);
+
+  return result;
+}
+
+Buffer Buffer::add(const Buffer &b, const std::string &dt) const {
+  // Ensure the kernel table is initialized
+  static bool initialized = false;
+  if (!initialized) {
+    init_kernel_table();
+    initialized = true;
+  }
+
+  if (dt.empty()) {
+    // Determine appropriate output dtype if not specified
+    std::string out_dtype;
+    std::string lhs_dtype = get_dtype();
+    std::string rhs_dtype = b.get_dtype();
+
+    // If types are the same, use that type
+    if (lhs_dtype == rhs_dtype) {
+      out_dtype = lhs_dtype;
+      return this->ewise<EwOp::ADD>(b, out_dtype);
+    }
+    // Otherwise use promotion rules
+    else {
+      // Try different output dtype combinations in order of preference
+
+      // Float types take precedence over integer types
+      if (lhs_dtype == "float64" || rhs_dtype == "float64") {
+        try {
+          return this->ewise<EwOp::ADD>(b, "float64");
+        } catch (const std::runtime_error &) {
+        }
+      }
+
+      if (lhs_dtype == "float32" || rhs_dtype == "float32") {
+        try {
+          return this->ewise<EwOp::ADD>(b, "float32");
+        } catch (const std::runtime_error &) {
+        }
+      }
+
+      if (lhs_dtype == "float16" || rhs_dtype == "float16") {
+        try {
+          return this->ewise<EwOp::ADD>(b, "float16");
+        } catch (const std::runtime_error &) {
+        }
+      }
+
+      // Integer type promotion
+      if (lhs_dtype == "int64" || rhs_dtype == "int64" ||
+          lhs_dtype == "uint64" || rhs_dtype == "uint64") {
+        try {
+          return this->ewise<EwOp::ADD>(b, "int64");
+        } catch (const std::runtime_error &) {
+        }
+      }
+
+      if (lhs_dtype == "int32" || rhs_dtype == "int32" ||
+          lhs_dtype == "uint32" || rhs_dtype == "uint32") {
+        try {
+          return this->ewise<EwOp::ADD>(b, "int32");
+        } catch (const std::runtime_error &) {
+        }
+      }
+
+      if (lhs_dtype == "int16" || rhs_dtype == "int16" ||
+          lhs_dtype == "uint16" || rhs_dtype == "uint16" ||
+          (lhs_dtype == "int8" && rhs_dtype == "uint8") ||
+          (lhs_dtype == "uint8" && rhs_dtype == "int8")) {
+        try {
+          return this->ewise<EwOp::ADD>(b, "int16");
+        } catch (const std::runtime_error &) {
+        }
+      }
+
+      // Last resort - try int8 for smaller integer types
+      try {
+        return this->ewise<EwOp::ADD>(b, "int8");
+      } catch (const std::runtime_error &) {
+        // If all automatic promotions failed, throw a more helpful error
+        throw std::runtime_error("No suitable output dtype found for " +
+                                 lhs_dtype + " + " + rhs_dtype);
+      }
+    }
+  }
+
+  return this->ewise<EwOp::ADD>(b, dt);
+}
+
+Buffer Buffer::mul(const Buffer &b, const std::string &dt) const {
+  return this->ewise<EwOp::MUL>(b, dt);
+}
+
+Buffer Buffer::div(const Buffer &b, const std::string &dt) const {
+  return this->ewise<EwOp::DIV>(b, dt);
+}
+
 // --- Pybind11 Module ---
 template class VecBuffer<bool>;
 template class VecBuffer<std::int8_t>;
@@ -318,6 +573,10 @@ template class VecBuffer<float>;
 template class VecBuffer<double>;
 
 PYBIND11_MODULE(cpu_kernel, m) {
+  // Initialize kernel functions table - ensuring all needed kernels are
+  // registered
+  init_kernel_table();
+
   // Expose the variant-based Buffer class
   py::class_<Buffer>(m, "Buffer")
       .def(py::init<py::sequence, std::string_view>(), py::arg("sequence"),
@@ -329,19 +588,9 @@ PYBIND11_MODULE(cpu_kernel, m) {
       .def("__getitem__", &Buffer::get_item)
       .def("__setitem__", &Buffer::set_item)
       .def("size", &Buffer::size)
-      .def("get_dtype", &Buffer::get_dtype);
-
-  //   Keep the old individual classes for backwards compatibility
-  py::class_<VecBuffer<float>>(m, "VecBufferFloat")
-      .def(py::init<std::size_t>())
-      .def("__getitem__",
-           [](const VecBuffer<float> &v, std::size_t i) { return v[i]; })
-
-      .def("__setitem__",
-           [](VecBuffer<float> &v, std::size_t i, float val) { v[i] = val; })
-      .def("size", &VecBuffer<float>::size)
-      .def("dot", &VecBuffer<float>::dot)
-      .def("cwiseMul", &VecBuffer<float>::cwiseMul)
-      .def("__iadd__", &VecBuffer<float>::operator+=, py::is_operator())
-      .def("__isub__", &VecBuffer<float>::operator-=, py::is_operator());
+      .def("get_dtype", &Buffer::get_dtype)
+      .def("add", &Buffer::add, py::arg("other"), py::arg("out_dtype") = "",
+           "Add two buffers together with SIMD optimization")
+      .def("__add__", &Buffer::add, py::arg("other"),
+           py::arg("out_dtype") = "");
 }
