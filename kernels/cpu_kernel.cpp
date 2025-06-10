@@ -464,7 +464,7 @@ Buffer Buffer::ewise(const Buffer &other, const std::string &out_dtype) const {
   return result;
 }
 
-Buffer Buffer::add(const Buffer &b, const std::string &dt) const {
+Buffer add(const Buffer &lhs, const Buffer &b, const std::string &dt) {
   // Ensure the kernel table is initialized
   static bool initialized = false;
   if (!initialized) {
@@ -475,13 +475,13 @@ Buffer Buffer::add(const Buffer &b, const std::string &dt) const {
   if (dt.empty()) {
     // Determine appropriate output dtype if not specified
     std::string out_dtype;
-    std::string lhs_dtype = get_dtype();
+    std::string lhs_dtype = lhs.get_dtype();
     std::string rhs_dtype = b.get_dtype();
 
     // If types are the same, use that type
     if (lhs_dtype == rhs_dtype) {
       out_dtype = lhs_dtype;
-      return this->ewise<EwOp::ADD>(b, out_dtype);
+      return lhs.ewise<EwOp::ADD>(b, out_dtype);
     }
     // Otherwise use promotion rules
     else {
@@ -490,21 +490,21 @@ Buffer Buffer::add(const Buffer &b, const std::string &dt) const {
       // Float types take precedence over integer types
       if (lhs_dtype == "float64" || rhs_dtype == "float64") {
         try {
-          return this->ewise<EwOp::ADD>(b, "float64");
+          return lhs.ewise<EwOp::ADD>(b, "float64");
         } catch (const std::runtime_error &) {
         }
       }
 
       if (lhs_dtype == "float32" || rhs_dtype == "float32") {
         try {
-          return this->ewise<EwOp::ADD>(b, "float32");
+          return lhs.ewise<EwOp::ADD>(b, "float32");
         } catch (const std::runtime_error &) {
         }
       }
 
       if (lhs_dtype == "float16" || rhs_dtype == "float16") {
         try {
-          return this->ewise<EwOp::ADD>(b, "float16");
+          return lhs.ewise<EwOp::ADD>(b, "float16");
         } catch (const std::runtime_error &) {
         }
       }
@@ -513,7 +513,7 @@ Buffer Buffer::add(const Buffer &b, const std::string &dt) const {
       if (lhs_dtype == "int64" || rhs_dtype == "int64" ||
           lhs_dtype == "uint64" || rhs_dtype == "uint64") {
         try {
-          return this->ewise<EwOp::ADD>(b, "int64");
+          return lhs.ewise<EwOp::ADD>(b, "int64");
         } catch (const std::runtime_error &) {
         }
       }
@@ -521,7 +521,7 @@ Buffer Buffer::add(const Buffer &b, const std::string &dt) const {
       if (lhs_dtype == "int32" || rhs_dtype == "int32" ||
           lhs_dtype == "uint32" || rhs_dtype == "uint32") {
         try {
-          return this->ewise<EwOp::ADD>(b, "int32");
+          return lhs.ewise<EwOp::ADD>(b, "int32");
         } catch (const std::runtime_error &) {
         }
       }
@@ -531,14 +531,14 @@ Buffer Buffer::add(const Buffer &b, const std::string &dt) const {
           (lhs_dtype == "int8" && rhs_dtype == "uint8") ||
           (lhs_dtype == "uint8" && rhs_dtype == "int8")) {
         try {
-          return this->ewise<EwOp::ADD>(b, "int16");
+          return lhs.ewise<EwOp::ADD>(b, "int16");
         } catch (const std::runtime_error &) {
         }
       }
 
       // Last resort - try int8 for smaller integer types
       try {
-        return this->ewise<EwOp::ADD>(b, "int8");
+        return lhs.ewise<EwOp::ADD>(b, "int8");
       } catch (const std::runtime_error &) {
         // If all automatic promotions failed, throw a more helpful error
         throw std::runtime_error("No suitable output dtype found for " +
@@ -547,7 +547,7 @@ Buffer Buffer::add(const Buffer &b, const std::string &dt) const {
     }
   }
 
-  return this->ewise<EwOp::ADD>(b, dt);
+  return lhs.ewise<EwOp::ADD>(b, dt);
 }
 
 Buffer Buffer::mul(const Buffer &b, const std::string &dt) const {
@@ -589,8 +589,13 @@ PYBIND11_MODULE(cpu_kernel, m) {
       .def("__setitem__", &Buffer::set_item)
       .def("size", &Buffer::size)
       .def("get_dtype", &Buffer::get_dtype)
-      .def("add", &Buffer::add, py::arg("other"), py::arg("out_dtype") = "",
-           "Add two buffers together with SIMD optimization")
-      .def("__add__", &Buffer::add, py::arg("other"),
-           py::arg("out_dtype") = "");
+      .def(
+          "__add__",
+          [](const Buffer &self, const Buffer &other) {
+            return add(self, other, "");
+          },
+          py::arg("other"), py::arg("out_dtype") = "");
+
+  m.def("add", &add, py::arg("lhs"), py::arg("rhs"), py::arg("out_dtype") = "",
+        "Add two buffers together with SIMD optimization");
 }

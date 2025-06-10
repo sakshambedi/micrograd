@@ -123,8 +123,6 @@ public:
   template <EwOp OP>
   [[nodiscard]] Buffer ewise(const Buffer &other,
                              const std::string &out_dtype) const;
-  [[nodiscard]] Buffer add(const Buffer &other,
-                           const std::string &out_dtype = "") const;
   [[nodiscard]] Buffer mul(const Buffer &other,
                            const std::string &out_dtype) const;
   [[nodiscard]] Buffer div(const Buffer &other,
@@ -143,3 +141,6 @@ private:
 
   BufferVariant buffer_;
 };
+
+[[nodiscard]] Buffer add(const Buffer &lhs, const Buffer &rhs,
+                         const std::string &out_dtype = "");
