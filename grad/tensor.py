@@ -255,9 +255,11 @@ class Tensor:
 
     # ---- Default override fuctions ----
     def __add__(self, other):
-        """Element-wise addition using buffer-level kernels."""
+        """Element-wise addition that integrates with autograd."""
         from grad.autograd.ops import Add
 
+        if not isinstance(other, Tensor):
+            other = Tensor(other, dtype=self.dtype)
         return Add.apply(self, other)
 
     def __sub__(self, other):
