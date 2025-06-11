@@ -11,7 +11,7 @@ class Buffer:
 
     def __init__(self, dtype: DTypeLike, iterable: Iterable[Any], *, copy: bool = True):
         self.dtype: DType = to_dtype(dtype)
-        self._storage = cpu_kernel.Buffer(iterable, self.dtype.fmt)
+        self._storage = cpu_kernel.Buffer(iterable, self.dtype.name)
 
     def to(self, device: Device): ...  # noqa: E704
 
@@ -61,7 +61,7 @@ class Buffer:
     def _filled(cls, dtype: DTypeLike, num_elem: int, val: int | float) -> "Buffer":
         buff = cls.__new__(cls)
         buff.dtype = out_dtype = to_dtype(dtype)
-        buff._storage = cpu_kernel.Buffer(num_elem, out_dtype.fmt, val)
+        buff._storage = cpu_kernel.Buffer(num_elem, out_dtype.name, val)
         return buff
 
     def __getitem__(self, idx: int):
