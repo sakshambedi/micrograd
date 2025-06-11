@@ -59,7 +59,10 @@ class Add(Function):
     def forward(ctx: Function, a: Tensor, b: Tensor) -> Tensor:
         """Element-wise addition of two tensors."""
         ctx.save_for_backward(a, b)
-        return _elementwise_op(a, b, lambda x, y: x + y)
+        from grad.kernels import cpu_kernel  # type: ignore
+
+        return cpu_kernel.add(a.storage, b._storage, "float32")
+        # _elementwise_op(a, b, lambda x, y: x + y)
 
     @staticmethod
     def backward(ctx: Function, *grad_output: Any) -> Any:

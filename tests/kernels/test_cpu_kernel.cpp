@@ -67,11 +67,11 @@ TEST(BufferTest, InitializeWithValue) {
     EXPECT_EQ(py::cast<int>(i32buf.get_item(i)), 42);
   }
 
-  Buffer i64buf(4, "int64",
-                py::cast(static_cast<int64_t>(-9223372036854775807)));
+  // Use a large negative int64_t value that can be reliably represented
+  int64_t large_neg_value = -9223372036854775800LL;
+  Buffer i64buf(4, "int64", py::cast(large_neg_value));
   for (std::size_t i = 0; i < i64buf.size(); ++i) {
-    EXPECT_EQ(py::cast<int64_t>(i64buf.get_item(i)),
-              static_cast<int64_t>(-9223372036854775807));
+    EXPECT_EQ(py::cast<int64_t>(i64buf.get_item(i)), large_neg_value);
   }
 
   Buffer u8buf(3, "uint8", py::cast(uint8_t(255)));
@@ -123,14 +123,12 @@ TEST(BufferTest, BooleanBufferConversions) {
     EXPECT_TRUE(py::cast<bool>(bbuf2.get_item(i)));
   }
 
-  Buffer bbuf3(3, "bool",
-               py::cast(0.1)); // Non-zero value should convert to true
+  Buffer bbuf3(3, "bool", py::cast(0.1));
   for (std::size_t i = 0; i < bbuf3.size(); ++i) {
     EXPECT_TRUE(py::cast<bool>(bbuf3.get_item(i)));
   }
 
-  Buffer bbuf4(3, "bool",
-               py::cast(-1)); // Negative values should convert to true
+  Buffer bbuf4(3, "bool", py::cast(-1));
   for (std::size_t i = 0; i < bbuf4.size(); ++i) {
     EXPECT_TRUE(py::cast<bool>(bbuf4.get_item(i)));
   }

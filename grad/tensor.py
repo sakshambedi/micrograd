@@ -260,7 +260,6 @@ class Tensor:
 
         if not isinstance(other, Tensor):
             other = Tensor(other, dtype=self.dtype)
-
         return Add.apply(self, other)
 
     def __sub__(self, other):

@@ -3,20 +3,16 @@
 
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
-#include <functional>
-#include <string>
-#include <string_view>
-#include <unordered_map>
-#include <variant>
-
-#include "pybind11/pytypes.h"
 #include <Eigen/Core>
 #include <Eigen/Dense>
-#include <Eigen/StdVector>
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
+#include <string>
+#include <string_view>
+#include <variant>
 
 namespace py = pybind11;
 
@@ -40,7 +36,6 @@ public:
   [[nodiscard]] VecBuffer cwiseMul(const VecBuffer &rhs) const;
   [[nodiscard]] T dot(const VecBuffer &rhs) const;
 
-  // Standalone addition and subtraction operators
   friend VecBuffer operator+(const VecBuffer &lhs, const VecBuffer &rhs) {
     VecBuffer result = lhs;
     result += rhs;
@@ -58,21 +53,14 @@ public:
 
 private:
   Array data_;
-  // std::shared_ptr<Array> data_;
   explicit VecBuffer(const Array &a);
 };
 
-enum class EwOp : std::uint8_t { ADD, MUL, DIV, SUB, COUNT };
+// Element-wise operations
+enum class EwOp : uint8_t { ADD, SUB, MUL, DIV };
 
-using KernFn = void (*)(const void *, const void *, void *, std::size_t);
-constexpr std::size_t T = 13;
-
-static std::array<
-    std::array<std::array<std::array<KernFn, T>, T>, T>, // [op][lhs][rhs][out]
-    static_cast<std::size_t>(EwOp::COUNT)>
-    TABLE = {};
-
-enum class DTypeEnum : std::uint8_t {
+// Supported data types
+enum class DType : uint8_t {
   BOOL,
   INT8,
   UINT8,
@@ -84,63 +72,61 @@ enum class DTypeEnum : std::uint8_t {
   UINT64,
   FLOAT16,
   FLOAT32,
-  FLOAT64,
-  UNKNOWN
+  FLOAT64
 };
 
-template <EwOp OP, class A, class B, class R>
-static void ew_kernel(const void *a_raw, const void *b_raw, void *r_raw,
-                      std::size_t n);
+// Get DType from string representation
+DType dtype_from_string(std::string_view dtype_str);
+std::string dtype_to_string(DType dtype);
 
-template <EwOp OP, class A, class B, class R>
-static void reg(DTypeEnum a, DTypeEnum b, DTypeEnum r);
-
-DTypeEnum get_dtype_enum(std::string_view dtype);
-
-extern const std::unordered_map<DTypeEnum,
-                                std::function<void(class Buffer &, size_t)>>
-    factory_table;
-
+// Buffer class that can hold vectors of different types
 class Buffer {
 public:
-  // Define BufferVariant type
   using BufferVariant =
-      std::variant<VecBuffer<bool>, VecBuffer<std::int8_t>,
-                   VecBuffer<std::uint8_t>, VecBuffer<int16_t>,
-                   VecBuffer<uint16_t>, VecBuffer<int32_t>, VecBuffer<uint32_t>,
-                   VecBuffer<int64_t>, VecBuffer<uint64_t>, VecBuffer<float>,
-                   VecBuffer<double>, VecBuffer<Eigen::half>>;
-  explicit Buffer(std::size_t size, const std::string &dtype);
-  explicit Buffer(std::size_t size, const std::string &dtype, py::object val);
-  explicit Buffer(py::sequence seq, std::string_view fmt);
+      std::variant<VecBuffer<bool>, VecBuffer<int8_t>, VecBuffer<uint8_t>,
+                   VecBuffer<int16_t>, VecBuffer<uint16_t>, VecBuffer<int32_t>,
+                   VecBuffer<uint32_t>, VecBuffer<int64_t>, VecBuffer<uint64_t>,
+                   VecBuffer<Eigen::half>, VecBuffer<float>, VecBuffer<double>>;
 
+  // Constructors
+  explicit Buffer(std::size_t size, std::string_view dtype_str);
+  Buffer(std::size_t size, std::string_view dtype_str, const py::object &val);
+  Buffer(const py::sequence &seq, std::string_view dtype_str);
+
+  // Basic operations
   [[nodiscard]] std::size_t size() const;
   [[nodiscard]] py::object get_item(std::size_t i) const;
   void set_item(std::size_t i, double val);
   [[nodiscard]] std::string get_dtype() const;
+  [[nodiscard]] DType dtype() const;
 
-  // elementwise operations
-  template <EwOp OP>
-  [[nodiscard]] Buffer ewise(const Buffer &other,
-                             const std::string &out_dtype) const;
+  // Element-wise operations
+  [[nodiscard]] Buffer elementwise_op(const Buffer &other, EwOp op,
+                                      std::string_view out_dtype = "") const;
+  [[nodiscard]] Buffer add(const Buffer &other,
+                           std::string_view out_dtype = "") const;
+  [[nodiscard]] Buffer sub(const Buffer &other,
+                           std::string_view out_dtype = "") const;
   [[nodiscard]] Buffer mul(const Buffer &other,
-                           const std::string &out_dtype) const;
+                           std::string_view out_dtype = "") const;
   [[nodiscard]] Buffer div(const Buffer &other,
-                           const std::string &out_dtype) const;
-
-  template <typename T> void set_buffer(std::size_t n) {
-    buffer_ = VecBuffer<T>(n);
-  }
+                           std::string_view out_dtype = "") const;
 
   [[nodiscard]] const BufferVariant &get_buffer() const { return buffer_; }
   BufferVariant &get_buffer() { return buffer_; }
 
 private:
-  void initialize_buffer(std::size_t size, const std::string &dtype);
-  void initialize_buffer(std::size_t size, std::string_view dtype);
-
+  void initialize_buffer(std::size_t size, DType dtype);
   BufferVariant buffer_;
+  DType dtype_;
 };
 
+// Standalone operations for better readability in client code
 [[nodiscard]] Buffer add(const Buffer &lhs, const Buffer &rhs,
-                         const std::string &out_dtype = "");
+                         std::string_view out_dtype = "");
+[[nodiscard]] Buffer sub(const Buffer &lhs, const Buffer &rhs,
+                         std::string_view out_dtype = "");
+[[nodiscard]] Buffer mul(const Buffer &lhs, const Buffer &rhs,
+                         std::string_view out_dtype = "");
+[[nodiscard]] Buffer div(const Buffer &lhs, const Buffer &rhs,
+                         std::string_view out_dtype = "");
