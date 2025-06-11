@@ -591,8 +591,8 @@ PYBIND11_MODULE(cpu_kernel, m) {
       .def("get_dtype", &Buffer::get_dtype)
       .def(
           "__add__",
-          [](const Buffer &self, const Buffer &other) {
-            return add(self, other, "");
+          [](const Buffer &self, const Buffer &other, const std::string &out_dtype) {
+            return add(self, other, out_dtype);
           },
           py::arg("other"), py::arg("out_dtype") = "");
 
