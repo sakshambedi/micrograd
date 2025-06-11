@@ -257,6 +257,7 @@ class Tensor:
     def __add__(self, other):
         """Element-wise addition that integrates with autograd."""
         from grad.autograd.ops import Add
+
         if not isinstance(other, Tensor):
             other = Tensor(other, dtype=self.dtype)
 
