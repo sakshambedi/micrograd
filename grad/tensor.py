@@ -255,31 +255,10 @@ class Tensor:
 
     # ---- Default override fuctions ----
     def __add__(self, other):
-        """Element-wise addition using buffer-level kernels."""
-        from grad.ops.elementwise import elementwise_add
+        """Element-wise addition that integrates with autograd."""
+        from grad.autograd.ops import Add
 
-        if not isinstance(other, Tensor):
-            other = Tensor(other, dtype=self.dtype)
-
-        if self.shape != other.shape:
-            raise ValueError(f"Shape mismatch: {self.shape} vs {other.shape}")
-
-        if self.storage is None or other.storage is None:
-            raise AttributeError("Tensor storage not initialized")
-
-        out_storage = elementwise_add(self.storage, other.storage)
-
-        result = Tensor.__new__(Tensor)
-        result.storage = out_storage
-        result.shape = self.shape
-        result._stride = tensor_stride(result.shape)
-        result.device = self.device
-        result.requires_grad = self.requires_grad or other.requires_grad
-        result.grad = None
-        result.grad_fn = None
-        result._contiguous = True
-        result.base_offset = 0
-        return result
+        return Add.apply(self, other)
 
     def __sub__(self, other):
         from grad.autograd.ops import Sub
