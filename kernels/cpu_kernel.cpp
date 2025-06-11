@@ -430,41 +430,48 @@ PYBIND11_MODULE(cpu_kernel, m) {
 
   m.def("add", &add, py::arg("lhs"), py::arg("rhs"), py::arg("out_dtype") = "",
         "Add two buffers together with SIMD optimization");
-// =======
-//       .def("dtype", &Buffer::get_dtype)
-//       .def("__add__", [](const Buffer &self,
-//                          const Buffer &other) { return add(self, other, ""); })
-//       .def("__sub__", [](const Buffer &self,
-//                          const Buffer &other) { return sub(self, other, ""); })
-//       .def("__mul__", [](const Buffer &self,
-//                          const Buffer &other) { return mul(self, other, ""); })
-//       .def("__truediv__", [](const Buffer &self, const Buffer &other) {
-//         return div(self, other, "");
-//       });
+  // =======
+  //       .def("dtype", &Buffer::get_dtype)
+  //       .def("__add__", [](const Buffer &self,
+  //                          const Buffer &other) { return add(self, other,
+  //                          ""); })
+  //       .def("__sub__", [](const Buffer &self,
+  //                          const Buffer &other) { return sub(self, other,
+  //                          ""); })
+  //       .def("__mul__", [](const Buffer &self,
+  //                          const Buffer &other) { return mul(self, other,
+  //                          ""); })
+  //       .def("__truediv__", [](const Buffer &self, const Buffer &other) {
+  //         return div(self, other, "");
+  //       });
 
-//   m.def(
-//       "add",
-//       [](const Buffer &lhs, const Buffer &rhs, std::string_view out_dtype) {
-//         return add(lhs, rhs, out_dtype);
-//       },
-//       py::arg("lhs"), py::arg("rhs"), py::arg("out_dtype") = "");
-//   m.def(
-//       "sub",
-//       [](const Buffer &lhs, const Buffer &rhs, std::string_view out_dtype) {
-//         return sub(lhs, rhs, out_dtype);
-//       },
-//       py::arg("lhs"), py::arg("rhs"), py::arg("out_dtype") = "");
-//   m.def(
-//       "mul",
-//       [](const Buffer &lhs, const Buffer &rhs, std::string_view out_dtype) {
-//         return mul(lhs, rhs, out_dtype);
-//       },
-//       py::arg("lhs"), py::arg("rhs"), py::arg("out_dtype") = "");
-//   m.def(
-//       "div",
-//       [](const Buffer &lhs, const Buffer &rhs, std::string_view out_dtype) {
-//         return div(lhs, rhs, out_dtype);
-//       },
-//       py::arg("lhs"), py::arg("rhs"), py::arg("out_dtype") = "");
-// >>>>>>> maths_ops_kernel
+  //   m.def(
+  //       "add",
+  //       [](const Buffer &lhs, const Buffer &rhs, std::string_view out_dtype)
+  //       {
+  //         return add(lhs, rhs, out_dtype);
+  //       },
+  //       py::arg("lhs"), py::arg("rhs"), py::arg("out_dtype") = "");
+  //   m.def(
+  //       "sub",
+  //       [](const Buffer &lhs, const Buffer &rhs, std::string_view out_dtype)
+  //       {
+  //         return sub(lhs, rhs, out_dtype);
+  //       },
+  //       py::arg("lhs"), py::arg("rhs"), py::arg("out_dtype") = "");
+  //   m.def(
+  //       "mul",
+  //       [](const Buffer &lhs, const Buffer &rhs, std::string_view out_dtype)
+  //       {
+  //         return mul(lhs, rhs, out_dtype);
+  //       },
+  //       py::arg("lhs"), py::arg("rhs"), py::arg("out_dtype") = "");
+  //   m.def(
+  //       "div",
+  //       [](const Buffer &lhs, const Buffer &rhs, std::string_view out_dtype)
+  //       {
+  //         return div(lhs, rhs, out_dtype);
+  //       },
+  //       py::arg("lhs"), py::arg("rhs"), py::arg("out_dtype") = "");
+  // >>>>>>> maths_ops_kernel
 }

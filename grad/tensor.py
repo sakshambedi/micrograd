@@ -265,16 +265,22 @@ class Tensor:
     def __sub__(self, other):
         from grad.autograd.ops import Sub
 
+        if not isinstance(other, Tensor):
+            other = Tensor(other, dtype=self.dtype)
         return Sub.apply(self, other)
 
     def __mul__(self, other):
         from grad.autograd.ops import Mul
 
+        if not isinstance(other, Tensor):
+            other = Tensor(other, dtype=self.dtype)
         return Mul.apply(self, other)
 
     def __truediv__(self, other):
         from grad.autograd.ops import Div
 
+        if not isinstance(other, Tensor):
+            other = Tensor(other, dtype=self.dtype)
         return Div.apply(self, other)
 
     def __pow__(self, other):

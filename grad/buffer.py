@@ -11,7 +11,7 @@ class Buffer:
 
     def __init__(self, dtype: DTypeLike, iterable: Iterable[Any], *, copy: bool = True):
         self.dtype: DType = to_dtype(dtype)
-        self._storage = cpu_kernel.Buffer(iterable, self.dtype.name)
+        self._storage = cpu_kernel.Buffer(iterable, self.dtype.fmt)
 
     def to(self, device: Device): ...  # noqa: E704
 
@@ -61,7 +61,7 @@ class Buffer:
     def _filled(cls, dtype: DTypeLike, num_elem: int, val: int | float) -> "Buffer":
         buff = cls.__new__(cls)
         buff.dtype = out_dtype = to_dtype(dtype)
-        buff._storage = cpu_kernel.Buffer(num_elem, out_dtype.name, val)
+        buff._storage = cpu_kernel.Buffer(num_elem, out_dtype.fmt, val)
         return buff
 
     def __getitem__(self, idx: int):
@@ -75,3 +75,11 @@ class Buffer:
     def size_bytes(self) -> int:
         """Return the size of this buffer in bytes"""
         return len(self) * self.dtype.itemsize
+
+    @classmethod
+    def _from_cpp_buffer(cls, cpp_buffer: Any, dtype: DType):
+        """Create a Python Buffer from a C++ Buffer"""
+        buff = cls.__new__(cls)
+        buff.dtype = to_dtype(dtype)
+        buff._storage = cpp_buffer
+        return buff
