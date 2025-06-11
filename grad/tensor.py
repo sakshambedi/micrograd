@@ -199,6 +199,12 @@ class Tensor:
         """Return the data type of the tensor."""
         if self.storage is None:
             raise AttributeError("Tensor with data is not initialized yet!")
+        return self.storage._dtype
+
+    @property
+    def vector_dtype(self) -> str:
+        if self.storage is None:
+            raise AttributeError("Tensor with data is not initialized yet!")
         return self.storage.dtype
 
     @staticmethod
@@ -310,10 +316,13 @@ class Tensor:
         raise AttributeError("Tensor with a storage has not been initialized yet!")
 
     def to_numpy(self):
+        """Convert tensor to numpy array."""
         import numpy as np
 
-        size = int(np.prod(self.shape))
-        arr = np.array(self.buffer[:size], dtype=self.dtype.fmt)
+        if self.storage is None:
+            raise AttributeError("Tensor with data is not initialized yet!")
+
+        arr = np.array(self.storage.to_list(), dtype=self.dtype.fmt)
         return arr.reshape(self.shape)
 
     def __setitem__(self, idx, value):

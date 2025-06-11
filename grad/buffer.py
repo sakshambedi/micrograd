@@ -7,13 +7,17 @@ from grad.kernels import cpu_kernel  # type: ignore
 
 
 class Buffer:
-    __slots__ = ("dtype", "_storage")
+    __slots__ = ("_dtype", "_storage")
 
     def __init__(self, dtype: DTypeLike, iterable: Iterable[Any], *, copy: bool = True):
-        self.dtype: DType = to_dtype(dtype)
-        self._storage = cpu_kernel.Buffer(iterable, self.dtype.fmt)
+        self._dtype: DType = to_dtype(dtype)
+        self._storage = cpu_kernel.Buffer(iterable, self._dtype.fmt)
 
     def to(self, device: Device): ...  # noqa: E704
+
+    @property
+    def dtype(self) -> str:
+        return str(self._storage.get_dtype())
 
     def __len__(self):
         return self._storage.size()
@@ -24,7 +28,7 @@ class Buffer:
     def share(self) -> "Buffer":
         """Return a new Buffer instance that shares underlying storage."""
         new_buff = Buffer.__new__(Buffer)
-        new_buff.dtype = self.dtype
+        new_buff._dtype = self._dtype
         new_buff._storage = self._storage
         return new_buff
 
@@ -46,7 +50,7 @@ class Buffer:
 
     def clone(self) -> "Buffer":
         """Create a copy of this buffer"""
-        return Buffer(self.dtype, self.to_list())
+        return Buffer(self._dtype, self.to_list())
 
     def resize(self, new_size: int) -> "Buffer":
         """Create a new buffer with different size, preserving existing data where possible"""
@@ -55,12 +59,12 @@ class Buffer:
             current_data.extend([0] * (new_size - len(current_data)))
         else:
             current_data = current_data[:new_size]
-        return Buffer(self.dtype, current_data)
+        return Buffer(self._dtype, current_data)
 
     @classmethod
     def _filled(cls, dtype: DTypeLike, num_elem: int, val: int | float) -> "Buffer":
         buff = cls.__new__(cls)
-        buff.dtype = out_dtype = to_dtype(dtype)
+        buff._dtype = out_dtype = to_dtype(dtype)
         buff._storage = cpu_kernel.Buffer(num_elem, out_dtype.fmt, val)
         return buff
 
@@ -74,12 +78,12 @@ class Buffer:
 
     def size_bytes(self) -> int:
         """Return the size of this buffer in bytes"""
-        return len(self) * self.dtype.itemsize
+        return len(self) * self._dtype.itemsize
 
     @classmethod
     def _from_cpp_buffer(cls, cpp_buffer: Any, dtype: DType):
         """Create a Python Buffer from a C++ Buffer"""
         buff = cls.__new__(cls)
-        buff.dtype = to_dtype(dtype)
+        buff._dtype = to_dtype(dtype)
         buff._storage = cpp_buffer
         return buff

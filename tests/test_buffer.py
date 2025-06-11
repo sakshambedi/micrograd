@@ -8,17 +8,17 @@ class TestBuffer:
     def test_init_with_list(self):
         b = Buffer(dtypes.float32, [1.0, 2.0, 3.0])
         assert len(b) == 3
-        assert b.dtype.name == "float32"
+        assert b._dtype.name == "float32"
         assert b.to_list() == [1.0, 2.0, 3.0]
 
         b = Buffer(dtypes.int32, [1, 2, 3])
         assert len(b) == 3
-        assert b.dtype.name == "int"  # internal name is int
+        assert b._dtype.name == "int"  # internal name is int
         assert b.to_list() == [1, 2, 3]
 
         b = Buffer("bool", [True, False, True])
         assert len(b) == 3
-        assert b.dtype.name == "bool"
+        assert b._dtype.name == "bool"
         assert b.to_list() == [True, False, True]
 
     def test_type_conversion(self):
@@ -105,7 +105,7 @@ class TestBuffer:
 
         for dt in dtypes:
             b = Buffer._filled(dt, 3, 1)
-            assert b.dtype == to_dtype(dt)
+            assert b._dtype == to_dtype(dt)
             assert len(b) == 3
 
     def test_large_values(self):

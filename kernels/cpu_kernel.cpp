@@ -298,7 +298,7 @@ DType Buffer::dtype() const { return dtype_; }
 Buffer Buffer::elementwise_op(const Buffer &other, EwOp op,
                               std::string_view out_dtype_str) const {
   if (size() != other.size()) {
-    throw std::runtime_error("Size mismatch in elementwise operation");
+    throw std::runtime_error("shape mismatch in elementwise operation");
   }
 
   // Use the output dtype if provided, otherwise use this buffer's dtype

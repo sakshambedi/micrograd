@@ -1,39 +1,39 @@
-# import numpy as np
-# import pytest
+import numpy as np
+import pytest
 
-# from grad.tensor import Tensor
+from grad.tensor import Tensor
 
 
-# class TestAddition:
-#     @pytest.mark.parametrize(
-#         "a,b",
-#         [
-#             ([1, 2, 3], [4, 5, 6]),
-#             ([[1, 2], [3, 4]], [[10, 20], [30, 40]]),
-#             ([[0, 1, 2], [3, 4, 5]], [[1, 1, 1], [1, 1, 1]]),
-#             ([-1, -2, -3], [1, 2, 3]),
-#             ([1.5, 2.5, 3.5], [0.5, 1.0, 1.5]),
-#         ],
-#     )
-#     def test_add_matches_numpy(self, a, b):
-#         t_a = Tensor(a)
-#         t_b = Tensor(b)
-#         t_c = t_a + t_b
-#         res = np.array(a) + np.array(b)
-#         np.testing.assert_array_equal(t_c.to_numpy(), res)
+class TestAddition:
+    @pytest.mark.parametrize(
+        "a,b",
+        [
+            ([1, 2, 3], [4, 5, 6]),
+            ([[1, 2], [3, 4]], [[10, 20], [30, 40]]),
+            ([[0, 1, 2], [3, 4, 5]], [[1, 1, 1], [1, 1, 1]]),
+            ([-1, -2, -3], [1, 2, 3]),
+            ([1.5, 2.5, 3.5], [0.5, 1.0, 1.5]),
+        ],
+    )
+    def test_add_matches_numpy(self, a, b):
+        t_a = Tensor(a)
+        t_b = Tensor(b)
+        t_c = t_a + t_b
+        res = np.array(a) + np.array(b)
+        np.testing.assert_array_equal(t_c.to_numpy(), res)
 
-#     def test_add_2d(self):
-#         t0 = Tensor([[1, 2, 3], [4, 5, 6]])
-#         t1 = Tensor([[10, 20, 30], [40, 50, 60]])
-#         out = t0 + t1
-#         expected = np.array([[11, 22, 33], [44, 55, 66]])
-#         np.testing.assert_array_equal(out.to_numpy(), expected)
+    def test_add_2d(self):
+        t0 = Tensor([[1, 2, 3], [4, 5, 6]])
+        t1 = Tensor([[10, 20, 30], [40, 50, 60]])
+        out = t0 + t1
+        expected = np.array([[11, 22, 33], [44, 55, 66]])
+        np.testing.assert_array_equal(out.to_numpy(), expected)
 
-#     def test_add_shape_mismatch(self):
-#         t0 = Tensor([1, 2, 3])
-#         t1 = Tensor([[1, 2], [3, 4]])
-#         with pytest.raises(ValueError, match="Shape mismatch"):
-#             _ = t0 + t1
+    def test_add_shape_mismatch(self):
+        t0 = Tensor([1, 2, 3])
+        t1 = Tensor([[1, 2], [3, 4]])
+        with pytest.raises(RuntimeError, match="shape mismatch"):
+            _ = t0 + t1
 
 
 # class TestSubtraction:
