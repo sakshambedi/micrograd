@@ -6,6 +6,7 @@ from grad.autograd.function import Function
 from grad.buffer import Buffer
 from grad.dtype import dtypes
 from grad.tensor import Tensor
+from grad.utils.misc import tensor_stride
 
 # from grad.utils.misc import _nd_indices
 
@@ -21,20 +22,26 @@ class Add(Function):
         if a.storage is None or b.storage is None:
             raise ValueError("Cannot perform addition on tensors with no storage")
 
-        result = Tensor._filled(
-            a.shape,
-            0,
-            dtype=(rdtype := dtypes._upcast(a.dtype, b.dtype)),
-            device=(a.device or b.device) or "cpu",
+        # Previously this created a zero-filled tensor and then overwrote the
+        # buffer with the kernel result. That unnecessary allocation has been
+        # removed to reduce overhead.
+        rdtype = dtypes._upcast(a.dtype, b.dtype)
+        cpp_result_buffer = cpu_kernel.add(
+            a.storage._storage,
+            b.storage._storage,
+            rdtype.name,
         )
-        result.storage = Buffer._from_cpp_buffer(
-            cpu_kernel.add(
-                a.storage._storage,
-                b.storage._storage,
-                rdtype.name,
-            ),
-            rdtype,
-        )
+
+        result = Tensor.__new__(Tensor)
+        result.shape = a.shape
+        result._stride = tensor_stride(result.shape)
+        result.device = (a.device or b.device) or "cpu"
+        result._contiguous = True
+        result.base_offset = 0
+        result.storage = Buffer._from_cpp_buffer(cpp_result_buffer, rdtype)
+        result.grad = None
+        result.grad_fn = None
+        result.requires_grad = None
 
         return result
 
