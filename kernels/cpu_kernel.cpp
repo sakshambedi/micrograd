@@ -14,7 +14,7 @@
 
 namespace py = pybind11;
 
-// ──────────────────────────── Eigen::half caster ────────────────────────────
+// ---------------------------- Eigen::half caster ----------------------------
 namespace pybind11::detail {
 template <> struct type_caster<Eigen::half> {
   Eigen::half value;
@@ -36,7 +36,7 @@ template <> struct type_caster<Eigen::half> {
 };
 } // namespace pybind11::detail
 
-// ──────────────────────────── VecBuffer impl ────────────────────────────────
+// ---------------------------- VecBuffer impl --------------------------------
 template <typename T> VecBuffer<T>::VecBuffer(std::size_t n) : data_(n) {}
 template <typename T>
 VecBuffer<T>::VecBuffer(const T *src, std::size_t n) : data_(n) {
@@ -89,7 +89,7 @@ Eigen::Ref<const typename VecBuffer<T>::Array> VecBuffer<T>::ref() const {
   return data_;
 }
 
-// ────────────────────────── dtype helpers ───────────────────────────────────
+// -------------------------- dtype helpers -----------------------------------
 DType dtype_from_string(std::string_view s) {
   static const std::unordered_map<std::string_view, DType> map = {
       {"bool", DType::BOOL},       {"?", DType::BOOL},
@@ -141,7 +141,7 @@ std::string dtype_to_string(DType t) {
   throw std::runtime_error("Invalid dtype");
 }
 
-// ──────────────────── template binary_op (header-only) ──────────────────────
+// -------------------- template binary_op (header-only) ----------------------
 template <EwOp OP, typename L, typename R> constexpr auto binary_op(L l, R r) {
   using Common = std::common_type_t<L, R>;
   if constexpr (OP == EwOp::ADD)
@@ -158,7 +158,7 @@ template <EwOp OP, typename L, typename R> constexpr auto binary_op(L l, R r) {
   }
 }
 
-// ──────────────────── Buffer internals ───────────────────────────────────────
+// -------------------- Buffer internals ---------------------------------------
 void Buffer::initialize_buffer(std::size_t n, DType dt) {
   dtype_ = dt;
   switch (dt) {
@@ -201,7 +201,7 @@ void Buffer::initialize_buffer(std::size_t n, DType dt) {
   }
 }
 
-// ─ ctors ─────────────────────────────────────────────────────────────────────
+// - ctors ---------------------------------------------------------------------
 Buffer::Buffer(std::size_t n, std::string_view dt) {
   initialize_buffer(n, dtype_from_string(dt));
 }
@@ -249,7 +249,7 @@ Buffer::Buffer(const py::sequence &seq, std::string_view dt) {
       buffer_);
 }
 
-// ─ trivial API ───────────────────────────────────────────────────────────────
+// - trivial API ---------------------------------------------------------------
 std::size_t Buffer::size() const {
   return std::visit([](auto &b) { return b.size(); }, buffer_);
 }
@@ -266,7 +266,7 @@ void Buffer::set_item(std::size_t i, double v) {
 }
 std::string Buffer::get_dtype() const { return dtype_to_string(dtype_); }
 
-// ─ element-wise core ─────────────────────────────────────────────────────────
+// - element-wise core ---------------------------------------------------------
 Buffer Buffer::elementwise_op(const Buffer &rhs, EwOp op,
                               std::string_view out_dt) const {
   if (size() != rhs.size())
@@ -313,7 +313,7 @@ Buffer Buffer::elementwise_op(const Buffer &rhs, EwOp op,
   return out;
 }
 
-// ─ thin wrappers ────────────────────────────────────────────────────────────
+//---- wrappers --------------------------------------------------------
 Buffer Buffer::add(const Buffer &o, std::string_view dt) const {
   return elementwise_op(o, EwOp::ADD, dt);
 }
@@ -340,7 +340,7 @@ Buffer div(const Buffer &a, const Buffer &b, std::string_view dt) {
   return a.div(b, dt);
 }
 
-// ──────────────── explicit instantiations for VecBuffer ─────────────────────
+// ---------------- explicit instantiations for VecBuffer ----------------
 template class VecBuffer<bool>;
 template class VecBuffer<int8_t>;
 template class VecBuffer<uint8_t>;
@@ -354,7 +354,7 @@ template class VecBuffer<Eigen::half>;
 template class VecBuffer<float>;
 template class VecBuffer<double>;
 
-// ────────────────────────── PYBIND11 module ─────────────────────────────────
+// -------------------------- PYBIND11 module ---------------------------------
 PYBIND11_MODULE(cpu_kernel, m) {
   py::class_<Buffer>(m, "Buffer")
       .def(py::init<py::sequence, std::string_view>(), py::arg("sequence"),

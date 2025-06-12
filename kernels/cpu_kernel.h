@@ -121,7 +121,7 @@ private:
   DType dtype_;
 };
 
-// Standalone operations for better readability in client code
+// Standalone operations
 [[nodiscard]] Buffer add(const Buffer &lhs, const Buffer &rhs,
                          std::string_view out_dtype = "");
 [[nodiscard]] Buffer sub(const Buffer &lhs, const Buffer &rhs,
