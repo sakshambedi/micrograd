@@ -1,0 +1,14 @@
+{
+    "tab_size": 4,
+    "soft_tabs": true,
+    "file_scan_exclusions": [
+        "build",
+        ".venv",
+        "__pycache__",
+        ".pytest_cache",
+        "micrograd.egg-info",
+        "**/*.pyc",
+        ".vscode",
+        "__cmake_systeminformation"
+    ]
+}
