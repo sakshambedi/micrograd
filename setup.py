@@ -19,10 +19,11 @@ else:
 ext_modules = [
     Extension(
         "grad.kernels.cpu_kernel",
-        ["./kernels/cpu_kernel.cpp"],
+        ["cpu_kernel.cpp", "vecbuffer.cpp"],
         include_dirs=[
             pybind11.get_include(),
-            os.environ.get("EIGEN3_INCLUDE_DIR", "/opt/homebrew/include/eigen3"),
+            os.environ.get("EIGEN3_INCLUDE_DIR", os.path.join("build", "_deps", "eigen-src")),
+            os.path.join("build", "_deps", "xsimd-src", "include"),
         ],
         language="c++",
         extra_compile_args=extra_compile_args,
