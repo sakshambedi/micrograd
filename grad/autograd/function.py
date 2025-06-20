@@ -45,8 +45,6 @@ class Function:
     def apply(cls, *inputs: Any, **kwargs: Any):
         from grad.tensor import Tensor
 
-        # tclass = _tensor_cls()
-
         ctx = cls()
         result = cls.forward(ctx, *inputs, **kwargs)
         require_grad = any(

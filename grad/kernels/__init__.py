@@ -2,7 +2,7 @@
 
 # Try to import the compiled cpu_kernel extension
 try:
-    from grad.kernels import cpu_kernel  # type: ignore # noqa :F401
+    from grad.kernels import cpu_kernel  # type: ignore  # noqa :F401
 except ImportError:
     # If import fails, provide a helpful message
     import sys

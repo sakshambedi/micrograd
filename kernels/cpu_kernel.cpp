@@ -1,317 +1,230 @@
+// Copyright 2025 Saksham Bedi
+
 #include "cpu_kernel.h"
-#include "Eigen/src/Core/Map.h"
-#include "Eigen/src/Core/Ref.h"
-#include "Eigen/src/Core/arch/Default/Half.h"
-#include "abstract.h"
-#include "pybind11/attr.h"
-#include "pybind11/cast.h"
-#include "pybind11/detail/common.h"
-#include "pybind11/detail/descr.h"
-#include "pybind11/pybind11.h"
-#include "pybind11/pytypes.h"
-#include "pytypedefs.h"
-#include <cstddef>
-#include <cstdint>
-#include <functional>
-#include <stdexcept>
+#include <algorithm>
+#include <array>
+#include <iostream>
+#include <pybind11/numpy.h>
+#include <pybind11/pybind11.h>
 #include <string>
-#include <string_view>
-#include <type_traits>
 #include <unordered_map>
 #include <variant>
 
 namespace py = pybind11;
 
-// pybind11 type_caster for Eigen::half
-namespace pybind11::detail {
-
-template <> struct type_caster<Eigen::half> {
-public:
-protected:
-  Eigen ::half value;
-
-public:
-  static constexpr auto name = _("numpy.float16");
-  template <
-      typename T_,
-      ::pybind11 ::detail ::enable_if_t<
-          std ::is_same_v<Eigen ::half, ::pybind11 ::detail ::remove_cv_t<T_>>,
-          int> = 0>
-  static ::pybind11 ::handle cast(T_ *src,
-                                  ::pybind11 ::return_value_policy policy,
-                                  ::pybind11 ::handle parent) {
-    if (!src)
-      return ::pybind11 ::none().release();
-    if (policy == ::pybind11 ::return_value_policy ::take_ownership) {
-      auto h = cast(std ::move(*src), policy, parent);
-      delete src;
-      return h;
-    }
-    return cast(*src, policy, parent);
-  }
-  operator Eigen ::half *() { return &value; }
-  operator Eigen ::half &() { return value; }
-  operator Eigen ::half &&() && { return std ::move(value); }
-  template <typename T_>
-  using cast_op_type = ::pybind11 ::detail ::movable_cast_op_type<T_>;
-
-  // Python → C++
-  bool load(handle src, bool) {
-    value = Eigen::half(src.cast<float>());
-    return true;
-  }
-
-  // C++ → Python
-  static handle cast(Eigen::half h, return_value_policy, handle) {
-    static py::object np = py::module_::import("numpy");
-    static py::object f16 = np.attr("float16");
-    return f16(static_cast<float>(h)).release();
-  }
+static const std::unordered_map<std::string, DType> str_to_dtype = {
+    // {"bool", DType::BOOL},    // Commented out bool type for now
+    {"int8", DType::INT8},       {"uint8", DType::UINT8},
+    {"int16", DType::INT16},     {"uint16", DType::UINT16},
+    {"int32", DType::INT32},     {"uint32", DType::UINT32},
+    {"int64", DType::INT64},     {"uint64", DType::UINT64},
+    {"float16", DType::FLOAT16}, {"float32", DType::FLOAT32},
+    {"float64", DType::FLOAT64},
 };
 
-} // namespace pybind11::detail
-
-// --- VecBuffer Implementation ---
-template <typename T> VecBuffer<T>::VecBuffer(std::size_t n) : data_(n) {}
-
-template <typename T>
-VecBuffer<T>::VecBuffer(const T *src, std::size_t n)
-    : data_(Eigen::Map<const typename VecBuffer<T>::Array>(src, n)) {}
-
-template <typename T> T &VecBuffer<T>::operator[](std::size_t i) {
-  return data_(i);
+DType dtype_from_string(const std::string &s) {
+  auto it = str_to_dtype.find(s);
+  if (it == str_to_dtype.end())
+    throw std::runtime_error("unknown dtype");
+  return it->second;
 }
 
-template <typename T> const T &VecBuffer<T>::operator[](std::size_t i) const {
-  return data_(i);
+std::string dtype_to_string(DType t) {
+  for (auto &kv : str_to_dtype)
+    if (kv.second == t)
+      return kv.first;
+  return "";
 }
 
-template <typename T> std::size_t VecBuffer<T>::size() const {
-  return data_.size();
+// -----------------------------------------------------------------------------
+Buffer::Buffer(std::size_t n, const std::string &dtype) {
+  init(n, dtype_from_string(dtype));
 }
 
-template <typename T> T *VecBuffer<T>::data() { return data_.data(); }
-
-template <typename T> const T *VecBuffer<T>::data() const {
-  return data_.data();
-}
-
-template <typename T>
-VecBuffer<T> &VecBuffer<T>::operator+=(const VecBuffer &rhs) {
-  data_ += rhs.data_;
-  return *this;
-}
-
-template <typename T>
-VecBuffer<T> &VecBuffer<T>::operator-=(const VecBuffer &rhs) {
-  data_ -= rhs.data_;
-  return *this;
-}
-
-template <typename T>
-VecBuffer<T> VecBuffer<T>::cwiseMul(const VecBuffer &rhs) const {
-  return VecBuffer(data_.cwiseProduct(rhs.data_));
-}
-
-template <typename T> T VecBuffer<T>::dot(const VecBuffer &rhs) const {
-  return data_.matrix().dot(rhs.data_.matrix());
-}
-
-template <typename T>
-Eigen::Ref<typename VecBuffer<T>::Array> VecBuffer<T>::ref() {
-  return data_;
-}
-
-template <typename T>
-Eigen::Ref<const typename VecBuffer<T>::Array> VecBuffer<T>::ref() const {
-  return data_;
-}
-
-template <typename T>
-VecBuffer<T>::VecBuffer(const typename VecBuffer<T>::Array &a) : data_(a) {}
-
-// --- DTypeEnum Implementation ---
-DTypeEnum get_dtype_enum(std::string_view dtype) {
-  static const std::unordered_map<std::string_view, DTypeEnum> dtypeTable = {
-      {"bool", DTypeEnum::BOOL},       {"?", DTypeEnum::BOOL},
-      {"int8", DTypeEnum::INT8},       {"b", DTypeEnum::INT8},
-      {"uint8", DTypeEnum::UINT8},     {"B", DTypeEnum::UINT8},
-      {"int16", DTypeEnum::INT16},     {"h", DTypeEnum::INT16},
-      {"uint16", DTypeEnum::UINT16},   {"H", DTypeEnum::UINT16},
-      {"int32", DTypeEnum::INT32},     {"i", DTypeEnum::INT32},
-      {"uint32", DTypeEnum::UINT32},   {"I", DTypeEnum::UINT32},
-      {"int64", DTypeEnum::INT64},     {"q", DTypeEnum::INT64},
-      {"uint64", DTypeEnum::UINT64},   {"Q", DTypeEnum::UINT64},
-      {"float16", DTypeEnum::FLOAT16}, {"e", DTypeEnum::FLOAT16},
-      {"float32", DTypeEnum::FLOAT32}, {"f", DTypeEnum::FLOAT32},
-      {"float64", DTypeEnum::FLOAT64}, {"d", DTypeEnum::FLOAT64},
-  };
-
-  auto it = dtypeTable.find(dtype);
-  return (it == dtypeTable.end()) ? DTypeEnum::UNKNOWN : it->second;
-}
-
-template <typename T>
-static void fill_from_sequence(VecBuffer<T> &dst, PyObject *seq_fast,
-                               std::size_t n) {
-  T *out = dst.data();
-  for (std::size_t i = 0; i < n; ++i) {
-    PyObject *item = PySequence_Fast_GET_ITEM(seq_fast, i); // borrowed ref
-    // pybind11::cast is safe & fast inside C++ (holds GIL)
-    // out[i] = py::cast<T>(item);
-    out[i] = py::cast<T>(py::handle(item));
-  }
-}
-
-Buffer::Buffer(const std::string &dtype, std::size_t size) {
-  DTypeEnum dtype_enum = get_dtype_enum(dtype);
-  auto it = factory_table.find(dtype_enum);
-  if (it != factory_table.end()) {
-    it->second(*this, size);
-  } else {
-    throw std::runtime_error("Unsupported dtype: " + dtype);
-  }
-}
-
-Buffer::Buffer(py::sequence seq, std::string_view fmt) {
-  DTypeEnum dt = get_dtype_enum(fmt);
-  PyObject *fast = PySequence_Fast(seq.ptr(), "expected list/tuple for Buffer");
-  std::size_t n = PySequence_Fast_GET_SIZE(fast);
-
-  // Use existing factory_table to allocate the right VecBuffer<T>
-  auto it = factory_table.find(dt);
-  if (it == factory_table.end())
-    throw std::runtime_error("Unsupported dtype for sequence ctor");
-
-  // Allocate empty buffer of size n
-  it->second(*this, n);
-
-  // Dispatch fill loop via std::visit
+Buffer::Buffer(const py::buffer &view, const std::string &dtype) {
+  auto info = view.request();
+  init(info.size, dtype_from_string(dtype));
   std::visit(
       [&](auto &buf) {
-        using BufT = std::decay_t<decltype(buf)>;
-        using Scalar = typename BufT::Array::Scalar;
-        fill_from_sequence(buf, fast, n);
+        using T = std::decay_t<decltype(buf[0])>;
+        const T *src = static_cast<const T *>(info.ptr);
+        std::copy(src, src + info.size, buf.data());
       },
-      buffer_);
-
-  Py_DECREF(fast); // balance PySequence_Fast
+      data_);
 }
-
-const std::unordered_map<DTypeEnum, std::function<void(Buffer &, size_t)>>
-    factory_table = {
-        {DTypeEnum::BOOL,
-         [](Buffer &self, size_t n) { self.set_buffer<bool>(n); }},
-        {DTypeEnum::INT8,
-         [](Buffer &self, size_t n) { self.set_buffer<std::int8_t>(n); }},
-        {DTypeEnum::UINT8,
-         [](Buffer &self, size_t n) { self.set_buffer<std::uint8_t>(n); }},
-        {DTypeEnum::INT16,
-         [](Buffer &self, size_t n) { self.set_buffer<std::int16_t>(n); }},
-        {DTypeEnum::UINT16,
-         [](Buffer &self, size_t n) { self.set_buffer<std::uint16_t>(n); }},
-        {DTypeEnum::INT32,
-         [](Buffer &self, size_t n) { self.set_buffer<std::int32_t>(n); }},
-        {DTypeEnum::UINT32,
-         [](Buffer &self, size_t n) { self.set_buffer<std::uint32_t>(n); }},
-        {DTypeEnum::INT64,
-         [](Buffer &self, size_t n) { self.set_buffer<std::int64_t>(n); }},
-        {DTypeEnum::UINT64,
-         [](Buffer &self, size_t n) { self.set_buffer<std::uint64_t>(n); }},
-        {DTypeEnum::FLOAT16,
-         [](Buffer &self, size_t n) { self.set_buffer<Eigen::half>(n); }},
-        {DTypeEnum::FLOAT32,
-         [](Buffer &self, size_t n) { self.set_buffer<float>(n); }},
-        {DTypeEnum::FLOAT64,
-         [](Buffer &self, size_t n) { self.set_buffer<double>(n); }},
-};
 
 std::size_t Buffer::size() const {
-  return std::visit([](const auto &buf) { return buf.size(); }, buffer_);
+  return std::visit([](auto &b) { return b.size(); }, data_);
 }
 
-py::object Buffer::get_item(std::size_t i) const {
-  return std::visit([i](auto const &buf) { return py::cast(buf[i]); }, buffer_);
-}
+const BufferVariant &Buffer::raw() const { return data_; }
+BufferVariant &Buffer::raw() { return data_; }
 
-void Buffer::set_item(std::size_t i, double val) {
+py::dict Buffer::array_interface() const {
+  py::dict d;
   std::visit(
-      [i, val](auto &buf) {
-        using T = typename std::decay_t<decltype(buf)>::Array::Scalar;
-        buf[i] = static_cast<T>(val);
+      [&, this](auto &b) {
+        using T = std::decay_t<decltype(b[0])>;
+        d["shape"] = py::make_tuple(b.size());
+        if constexpr (std::is_same_v<T, uint8_t>)
+          // if (this->dtype_ == DType::BOOL)
+          //   d["typestr"] = "|b1"; // NumPy bool
+          // else
+          d["typestr"] = "|u1"; // uint8
+        else if constexpr (std::is_same_v<T, int8_t>)
+          d["typestr"] = "|i1";
+        else if constexpr (std::is_same_v<T, int16_t>)
+          d["typestr"] = "<i2";
+        else if constexpr (std::is_same_v<T, uint16_t>)
+          d["typestr"] = "<u2";
+        else if constexpr (std::is_same_v<T, int32_t>)
+          d["typestr"] = "<i4";
+        else if constexpr (std::is_same_v<T, uint32_t>)
+          d["typestr"] = "<u4";
+        else if constexpr (std::is_same_v<T, int64_t>)
+          d["typestr"] = "<i8";
+        else if constexpr (std::is_same_v<T, uint64_t>)
+          d["typestr"] = "<u8";
+        else if constexpr (std::is_same_v<T, half>)
+          d["typestr"] = "<f2";
+        else if constexpr (std::is_same_v<T, float>)
+          d["typestr"] = "<f4";
+        else if constexpr (std::is_same_v<T, double>)
+          d["typestr"] = "<f8";
+        d["data"] =
+            py::make_tuple(reinterpret_cast<std::uintptr_t>(b.data()), false);
       },
-      buffer_);
+      data_);
+  d["version"] = 3;
+  return d;
 }
 
-std::string Buffer::get_dtype() const {
+std::string Buffer::dtype() const { return dtype_to_string(dtype_); }
+
+void Buffer::init(std::size_t n, DType t) {
+  dtype_ = t;
+  switch (t) {
+  // case DType::BOOL:
+  //   data_ = VecBuffer<int8_t>(n);
+  //   break;
+  case DType::INT8:
+    data_ = VecBuffer<int8_t>(n);
+    break;
+  case DType::UINT8:
+    data_ = VecBuffer<uint8_t>(n);
+    break;
+  case DType::INT16:
+    data_ = VecBuffer<int16_t>(n);
+    break;
+  case DType::UINT16:
+    data_ = VecBuffer<uint16_t>(n);
+    break;
+  case DType::INT32:
+    data_ = VecBuffer<int32_t>(n);
+    break;
+  case DType::UINT32:
+    data_ = VecBuffer<uint32_t>(n);
+    break;
+  case DType::INT64:
+    data_ = VecBuffer<int64_t>(n);
+    break;
+  case DType::UINT64:
+    data_ = VecBuffer<uint64_t>(n);
+    break;
+  case DType::FLOAT16:
+    data_ = VecBuffer<half>(n);
+    break; // or half if using half.hpp
+  case DType::FLOAT32:
+    data_ = VecBuffer<float>(n);
+    break;
+  case DType::FLOAT64:
+    data_ = VecBuffer<double>(n);
+    break;
+  default:
+    throw std::runtime_error("bad dtype");
+  }
+}
+
+std::string Buffer::repr() const {
+  std::ostringstream oss;
+  oss << "Buffer(dtype=" << dtype_to_string(dtype_) << ", size=" << size()
+      << ", data=[";
+
+  const size_t max_display_elements = 10;
+  const bool truncated = size() > max_display_elements;
+  const size_t display_count = truncated ? max_display_elements : size();
+
+  std::visit(
+      [&](auto &b) {
+        using T = std::decay_t<decltype(b[0])>;
+
+        for (size_t i = 0; i < display_count; ++i) {
+          if (i > 0)
+            oss << ", ";
+
+          if constexpr (std::is_same_v<T, int8_t>)
+            oss << static_cast<int>(b[i]); // Display as number, not char
+          else if constexpr (std::is_same_v<T, uint8_t>)
+            oss << static_cast<unsigned>(b[i]); // Display as number, not char
+          else if constexpr (std::is_same_v<T, half>)
+            oss << static_cast<float>(b[i]) << "f";
+          else if constexpr (std::is_same_v<T, float>)
+            oss << b[i] << "f";
+          else if constexpr (std::is_same_v<T, double>)
+            oss << b[i];
+          else
+            oss << b[i];
+        }
+
+        if (truncated) {
+          oss << ", ...";
+        }
+      },
+      data_);
+  oss << "])";
+  return oss.str();
+}
+
+py::object Buffer::get_item(size_t index) const {
+  if (index >= size()) {
+    throw std::out_of_range("Buffer index out of range");
+  }
+
   return std::visit(
-      [](const auto &buf) -> std::string {
-        using T = typename std::decay_t<decltype(buf)>::Array::Scalar;
-        if constexpr (std::is_same_v<T, bool>)
-          return "bool";
-        if constexpr (std::is_same_v<T, std::int8_t>)
-          return "int8";
-        if constexpr (std::is_same_v<T, std::uint8_t>)
-          return "uint8";
-        if constexpr (std::is_same_v<T, std::int16_t>)
-          return "int16";
-        if constexpr (std::is_same_v<T, std::uint16_t>)
-          return "uint16";
-        if constexpr (std::is_same_v<T, std::int32_t>)
-          return "int32";
-        if constexpr (std::is_same_v<T, std::uint32_t>)
-          return "uint32";
-        if constexpr (std::is_same_v<T, std::int64_t>)
-          return "int64";
-        if constexpr (std::is_same_v<T, std::uint64_t>)
-          return "uint64";
-        if constexpr (std::is_same_v<T, float>)
-          return "float32";
-        if constexpr (std::is_same_v<T, double>)
-          return "float64";
-        if constexpr (std::is_same_v<T, Eigen::half>)
-          return "float16";
-        return "unknown";
+      [index](auto &b) -> py::object {
+        using ValueType = std::decay_t<decltype(b[0])>;
+        if constexpr (std::is_same_v<ValueType, half>) {
+          return py::cast(
+              static_cast<float>(b[index])); // Convert half to float for Python
+        } else {
+          return py::cast(b[index]);
+        }
       },
-      buffer_);
+      data_);
 }
 
-// --- Pybind11 Module ---
-template class VecBuffer<bool>;
-template class VecBuffer<std::int8_t>;
-template class VecBuffer<std::uint8_t>;
-template class VecBuffer<std::int16_t>;
-template class VecBuffer<std::uint16_t>;
-template class VecBuffer<std::int32_t>;
-template class VecBuffer<std::uint32_t>;
-template class VecBuffer<std::int64_t>;
-template class VecBuffer<std::uint64_t>;
-template class VecBuffer<Eigen::half>;
-template class VecBuffer<float>;
-template class VecBuffer<double>;
-
+// -----------------------------------------------------------------------------
 PYBIND11_MODULE(cpu_kernel, m) {
-  // Expose the variant-based Buffer class
   py::class_<Buffer>(m, "Buffer")
-      .def(py::init<py::sequence, std::string_view>(), py::arg("sequence"),
-           py::arg("fmt"))
-      .def(py::init<const std::string &, std::size_t>(), py::arg("dtype"),
-           py::arg("size"))
-      .def("__getitem__", &Buffer::get_item)
-      .def("__setitem__", &Buffer::set_item)
-      .def("size", &Buffer::size)
-      .def("get_dtype", &Buffer::get_dtype);
+      .def(py::init([](py::list l, const std::string &dtype) {
+        py::object np = py::module_::import("numpy");
 
-  //   Keep the old individual classes for backwards compatibility
-  py::class_<VecBuffer<float>>(m, "VecBufferFloat")
-      .def(py::init<std::size_t>())
+        py::object arr = np.attr("array")(l, py::arg("dtype") = dtype);
+        // Ensure the array is C-contiguous (row-major order)
+        // arr = arr.attr("ravel")().attr("copy")();
+        if (py::cast<int>(arr.attr("ndim")) > 1) {
+          arr = arr.attr("flatten")();
+        }
+
+        return Buffer(arr, dtype);
+      }))
+      .def(py::init<std::size_t, const std::string &>())
+      .def(py::init<py::buffer, const std::string &>())
+      .def("size", &Buffer::size)
+      .def("get_dtype", &Buffer::dtype)
+      .def("__repr__", &Buffer::repr)
       .def("__getitem__",
-           [](const VecBuffer<float> &v, std::size_t i) { return v[i]; })
-      .def("__setitem__",
-           [](VecBuffer<float> &v, std::size_t i, float val) { v[i] = val; })
-      .def("size", &VecBuffer<float>::size)
-      .def("dot", &VecBuffer<float>::dot)
-      .def("cwiseMul", &VecBuffer<float>::cwiseMul)
-      .def("__iadd__", &VecBuffer<float>::operator+=, py::is_operator())
-      .def("__isub__", &VecBuffer<float>::operator-=, py::is_operator());
+           &Buffer::get_item) // Add this line to enable [] access
+      .def("get_item", &Buffer::get_item)
+      .def_property_readonly("__array_interface__", &Buffer::array_interface);
 }

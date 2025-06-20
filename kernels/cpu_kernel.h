@@ -1,53 +1,26 @@
-#pragma once
+// Copyright 2025 Saksham Bedi
 
-#include "pybind11/pytypes.h"
-#include <Eigen/Core>
-#include <Eigen/Dense>
-#include <Eigen/StdVector>
-#include <cstddef>
-#include <cstdint>
-#include <functional>
+#ifndef KERNELS_CPU_KERNEL_H_
+#define KERNELS_CPU_KERNEL_H_
+
+#include "vecbuffer.h"
+#include <algorithm>
+#include <array>
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
-// #include <string>
-// #include <string>
-#include <string_view>
-// #include <type_traits>
+#include <string>
 #include <unordered_map>
 #include <variant>
 
+// Forward declaration of half-precision floating point type
+// typedef struct {
+//   uint16_t data;
+// } half;
+
 namespace py = pybind11;
 
-// --- VecBuffer ---
-template <typename T> class VecBuffer {
-public:
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  using Array = Eigen::Array<T, Eigen::Dynamic, 1>;
-
-  explicit VecBuffer(std::size_t n = 0);
-  VecBuffer(const T *src, std::size_t n);
-
-  T &operator[](std::size_t i);
-  const T &operator[](std::size_t i) const;
-  std::size_t size() const;
-  T *data();
-  const T *data() const;
-
-  VecBuffer &operator+=(const VecBuffer &rhs);
-  VecBuffer &operator-=(const VecBuffer &rhs);
-  VecBuffer cwiseMul(const VecBuffer &rhs) const;
-  T dot(const VecBuffer &rhs) const;
-
-  Eigen::Ref<Array> ref();
-  Eigen::Ref<const Array> ref() const;
-
-private:
-  Array data_;
-  explicit VecBuffer(const Array &a);
-};
-
-enum class DTypeEnum : std::uint8_t {
-  BOOL,
+enum class DType : uint8_t {
+  // BOOL,  // Commented out bool type for now
   INT8,
   UINT8,
   INT16,
@@ -59,37 +32,65 @@ enum class DTypeEnum : std::uint8_t {
   FLOAT16,
   FLOAT32,
   FLOAT64,
-  UNKNOWN
+  NUM_TYPES
 };
 
-DTypeEnum get_dtype_enum(std::string_view dtype);
+DType dtype_from_string(const std::string &s);
 
-// Forward declaration of factory table used by Buffer
-extern const std::unordered_map<DTypeEnum,
-                                std::function<void(class Buffer &, size_t)>>
-    factory_table;
+// DType -> string
+std::string dtype_to_string(DType t);
 
-class Buffer {
-public:
-  explicit Buffer(const std::string &dtype, std::size_t size);
-  explicit Buffer(py::sequence seq, std::string_view fmt);
+using BufferVariant =
+    std::variant</* VecBuffer<bool>, */ VecBuffer<int8_t>, VecBuffer<uint8_t>,
+                 VecBuffer<int16_t>, VecBuffer<uint16_t>, VecBuffer<int32_t>,
+                 VecBuffer<uint32_t>, VecBuffer<int64_t>, VecBuffer<uint64_t>,
+                 VecBuffer<half>, VecBuffer<float>, VecBuffer<double>>;
 
-  std::size_t size() const;
-  py::object get_item(std::size_t i) const;
-  void set_item(std::size_t i, double val);
-  std::string get_dtype() const;
+struct Buffer {
+  // Constructor for creating a buffer with specified size and dtype
+  Buffer(std::size_t n, const std::string &dtype);
 
-  // Template method to set buffer for factory functions
-  template <typename T> void set_buffer(std::size_t n) {
-    buffer_ = VecBuffer<T>(n);
-  }
+  // Constructor for initializing from data list (mainly for testing)
+  template <typename T>
+  Buffer(std::initializer_list<T> data, const std::string &dtype);
+
+  // Constructor taking a Python buffer view
+  Buffer(const py::buffer &view, const std::string &dtype);
+
+  [[nodiscard]] std::size_t size() const;
+
+  // Access to the raw buffer variant
+  [[nodiscard]] const BufferVariant &raw() const;
+  BufferVariant &raw();
+
+  // Returns the NumPy array interface dictionary for interoperability
+  [[nodiscard]] py::dict array_interface() const;
+
+  [[nodiscard]] std::string dtype() const;
+  [[nodiscard]] std::string repr() const;
+
+  // Get item at the specified index
+  py::object get_item(size_t index) const;
+
+  // Set item at the specified index
+  template <typename T> void set_item(size_t index, T value);
 
 private:
-  using BufferVariant =
-      std::variant<VecBuffer<bool>, VecBuffer<std::int8_t>,
-                   VecBuffer<std::uint8_t>, VecBuffer<int16_t>,
-                   VecBuffer<uint16_t>, VecBuffer<int32_t>, VecBuffer<uint32_t>,
-                   VecBuffer<int64_t>, VecBuffer<uint64_t>, VecBuffer<float>,
-                   VecBuffer<double>, VecBuffer<Eigen::half>>;
-  BufferVariant buffer_;
+  void init(std::size_t n, DType t);
+  BufferVariant data_;
+  DType dtype_;
 };
+
+template <typename T>
+Buffer::Buffer(std::initializer_list<T> data, const std::string &dtype) {
+  init(data.size(), dtype_from_string(dtype));
+  std::visit(
+      [&](auto &buf) {
+        using BufT = std::decay_t<decltype(buf[0])>;
+        std::transform(data.begin(), data.end(), buf.data(),
+                       [](const T &val) { return static_cast<BufT>(val); });
+      },
+      data_);
+}
+
+#endif // KERNELS_CPU_KERNEL_H_

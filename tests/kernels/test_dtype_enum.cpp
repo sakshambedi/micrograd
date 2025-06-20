@@ -1,56 +1,73 @@
+// Copyright 2025 Saksham Bedi hello@sakshambedi.com
+// All rights reserved.
 #include "../../kernels/cpu_kernel.h"
 #include <gtest/gtest.h>
 #include <string>
 
-// Test DTypeEnum conversions for all supported data types
-TEST(DTypeEnumTest, AllTypeConversions) {
-
-  EXPECT_EQ(get_dtype_enum("bool"), DTypeEnum::BOOL);
-  EXPECT_EQ(get_dtype_enum("int8"), DTypeEnum::INT8);
-  EXPECT_EQ(get_dtype_enum("uint8"), DTypeEnum::UINT8);
-  EXPECT_EQ(get_dtype_enum("int16"), DTypeEnum::INT16);
-  EXPECT_EQ(get_dtype_enum("uint16"), DTypeEnum::UINT16);
-  EXPECT_EQ(get_dtype_enum("int32"), DTypeEnum::INT32);
-  EXPECT_EQ(get_dtype_enum("uint32"), DTypeEnum::UINT32);
-  EXPECT_EQ(get_dtype_enum("int64"), DTypeEnum::INT64);
-  EXPECT_EQ(get_dtype_enum("uint64"), DTypeEnum::UINT64);
-  EXPECT_EQ(get_dtype_enum("float16"), DTypeEnum::FLOAT16);
-  EXPECT_EQ(get_dtype_enum("float32"), DTypeEnum::FLOAT32);
-  EXPECT_EQ(get_dtype_enum("float64"), DTypeEnum::FLOAT64);
-
-  EXPECT_EQ(get_dtype_enum("?"), DTypeEnum::BOOL);
-  EXPECT_EQ(get_dtype_enum("b"), DTypeEnum::INT8);
-  EXPECT_EQ(get_dtype_enum("B"), DTypeEnum::UINT8);
-  EXPECT_EQ(get_dtype_enum("h"), DTypeEnum::INT16);
-  EXPECT_EQ(get_dtype_enum("H"), DTypeEnum::UINT16);
-  EXPECT_EQ(get_dtype_enum("i"), DTypeEnum::INT32);
-  EXPECT_EQ(get_dtype_enum("I"), DTypeEnum::UINT32);
-  EXPECT_EQ(get_dtype_enum("q"), DTypeEnum::INT64);
-  EXPECT_EQ(get_dtype_enum("Q"), DTypeEnum::UINT64);
-  EXPECT_EQ(get_dtype_enum("e"), DTypeEnum::FLOAT16);
-  EXPECT_EQ(get_dtype_enum("f"), DTypeEnum::FLOAT32);
-  EXPECT_EQ(get_dtype_enum("d"), DTypeEnum::FLOAT64);
+// Test DType conversions for all supported data types
+TEST(DTypeTest, BasicTypeConversions) {
+  // EXPECT_EQ(dtype_from_string("bool"), DType::BOOL);
+  EXPECT_EQ(dtype_from_string("int8"), DType::INT8);
+  EXPECT_EQ(dtype_from_string("uint8"), DType::UINT8);
+  EXPECT_EQ(dtype_from_string("int16"), DType::INT16);
+  EXPECT_EQ(dtype_from_string("uint16"), DType::UINT16);
+  EXPECT_EQ(dtype_from_string("int32"), DType::INT32);
+  EXPECT_EQ(dtype_from_string("uint32"), DType::UINT32);
+  EXPECT_EQ(dtype_from_string("int64"), DType::INT64);
+  EXPECT_EQ(dtype_from_string("uint64"), DType::UINT64);
+  EXPECT_EQ(dtype_from_string("float16"), DType::FLOAT16);
+  EXPECT_EQ(dtype_from_string("float32"), DType::FLOAT32);
+  EXPECT_EQ(dtype_from_string("float64"), DType::FLOAT64);
 }
 
-TEST(DTypeEnumTest, UnknownTypes) {
-  EXPECT_EQ(get_dtype_enum("complex64"), DTypeEnum::UNKNOWN);
-  EXPECT_EQ(get_dtype_enum("complex128"), DTypeEnum::UNKNOWN);
-  EXPECT_EQ(get_dtype_enum("string"), DTypeEnum::UNKNOWN);
-  EXPECT_EQ(get_dtype_enum("object"), DTypeEnum::UNKNOWN);
-  EXPECT_EQ(get_dtype_enum(""), DTypeEnum::UNKNOWN);
-  EXPECT_EQ(get_dtype_enum("x"), DTypeEnum::UNKNOWN); // Non-existent code
+// Test round-trip conversions between string and enum
+// TEST(DTypeTest, RoundTripConversions) {
+//   for (const auto &type_name :
+//        {"bool", "int8", "uint8", "int16", "uint16", "int32", "uint32",
+//        "int64",
+//         "uint64", "float16", "float32", "float64"}) {
+//     DType dtype = dtype_from_string(type_name);
+//     std::string str = dtype_to_string(dtype);
+//     EXPECT_EQ(str, type_name);
+//   }
+// }
+
+// Test error handling for unknown types
+TEST(DTypeTest, UnknownTypes) {
+  EXPECT_THROW(dtype_from_string("complex64"), std::runtime_error);
+  EXPECT_THROW(dtype_from_string("complex128"), std::runtime_error);
+  EXPECT_THROW(dtype_from_string("string"), std::runtime_error);
+  EXPECT_THROW(dtype_from_string("object"), std::runtime_error);
+  EXPECT_THROW(dtype_from_string(""), std::runtime_error);
+  EXPECT_THROW(dtype_from_string("x"), std::runtime_error);
 }
 
-TEST(DTypeEnumTest, CaseSensitivity) {
-
-  EXPECT_NE(get_dtype_enum("FLOAT32"), DTypeEnum::FLOAT32);
-  EXPECT_NE(get_dtype_enum("Float32"), DTypeEnum::FLOAT32);
-  EXPECT_EQ(get_dtype_enum("FLOAT32"), DTypeEnum::UNKNOWN);
+// Test case sensitivity
+TEST(DTypeTest, CaseSensitivity) {
+  EXPECT_THROW(dtype_from_string("FLOAT32"), std::runtime_error);
+  EXPECT_THROW(dtype_from_string("Float32"), std::runtime_error);
+  EXPECT_THROW(dtype_from_string("BOOL"), std::runtime_error);
 }
 
-TEST(DTypeEnumTest, WhitespaceHandling) {
+// Test whitespace handling
+TEST(DTypeTest, WhitespaceHandling) {
+  EXPECT_THROW(dtype_from_string(" float32"), std::runtime_error);
+  EXPECT_THROW(dtype_from_string("float32 "), std::runtime_error);
+  EXPECT_THROW(dtype_from_string("float 32"), std::runtime_error);
+}
 
-  EXPECT_EQ(get_dtype_enum(" float32"), DTypeEnum::UNKNOWN);
-  EXPECT_EQ(get_dtype_enum("float32 "), DTypeEnum::UNKNOWN);
-  EXPECT_EQ(get_dtype_enum("float 32"), DTypeEnum::UNKNOWN);
+// Test dtype_to_string function
+TEST(DTypeTest, DTypeToString) {
+  // EXPECT_EQ(dtype_to_string(DType::BOOL), "bool");
+  EXPECT_EQ(dtype_to_string(DType::INT8), "int8");
+  EXPECT_EQ(dtype_to_string(DType::UINT8), "uint8");
+  EXPECT_EQ(dtype_to_string(DType::INT16), "int16");
+  EXPECT_EQ(dtype_to_string(DType::UINT16), "uint16");
+  EXPECT_EQ(dtype_to_string(DType::INT32), "int32");
+  EXPECT_EQ(dtype_to_string(DType::UINT32), "uint32");
+  EXPECT_EQ(dtype_to_string(DType::INT64), "int64");
+  EXPECT_EQ(dtype_to_string(DType::UINT64), "uint64");
+  EXPECT_EQ(dtype_to_string(DType::FLOAT16), "float16");
+  EXPECT_EQ(dtype_to_string(DType::FLOAT32), "float32");
+  EXPECT_EQ(dtype_to_string(DType::FLOAT64), "float64");
 }

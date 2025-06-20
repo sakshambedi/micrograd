@@ -35,16 +35,16 @@ class DType(metaclass=DTypeMetaClass):
 
 
 class dtypes:
-    void: Final[DType] = DType.new(-1, 0, "void", None)
+    # void: Final[DType] = DType.new(-1, 0, "void", None) # not supported
     bool: Final[DType] = DType.new(0, 1, "bool", "?")
-    int8: Final[DType] = DType.new(1, 1, "signed char", "b")
-    uint8: Final[DType] = DType.new(2, 1, "unsigned char", "B")
-    int16: Final[DType] = DType.new(3, 2, "short", "h")
-    uint16: Final[DType] = DType.new(4, 2, "unsigned short", "H")
-    int32: Final[DType] = DType.new(5, 4, "int", "i")
-    uint32: Final[DType] = DType.new(6, 4, "unsigned int", "I")
-    int64: Final[DType] = DType.new(7, 8, "long", "q")
-    uint64: Final[DType] = DType.new(8, 8, "unsigned long", "Q")
+    int8: Final[DType] = DType.new(1, 1, "int8", "b")
+    uint8: Final[DType] = DType.new(2, 1, "uint8", "B")
+    int16: Final[DType] = DType.new(3, 2, "uint16", "h")
+    uint16: Final[DType] = DType.new(4, 2, "uint16", "H")
+    int32: Final[DType] = DType.new(5, 4, "int32", "i")
+    uint32: Final[DType] = DType.new(6, 4, "uint32", "I")
+    int64: Final[DType] = DType.new(7, 8, "int64", "q")
+    uint64: Final[DType] = DType.new(8, 8, "unint64", "Q")
 
     # Floating point
     float16: Final[DType] = DType.new(9, 2, "float16", "e")
@@ -62,34 +62,6 @@ class dtypes:
         if t1 and t2:
             return t1 if t1.priority >= t2.priority else t2
         raise TypeError(f"Cannot upcast dtypes {t1.name} and {t2.name}")
-
-    # @classmethod
-    # def _storage_format(cls, dtype: DType) -> str:
-    #     """Return the actual format code used to store data in the buffer."""
-    #     if dtype.fmt is None:
-    #         raise TypeError(f"Unsupported dtype {dtype.name} (no format string)")
-    #     return dtype.fmt
-
-    # @classmethod
-    # def _to_storage(cls, val: Any, dtype: DType) -> Any:
-    #     """Convert val (python scalar) to the representation expected by storage.
-    #     Keeps numeric types fast for the common cases, only struct‑packs for fp16.
-    #     """
-    #     if dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
-    #         # Use manual conversion when struct 'e' is not supported
-    #         return float16_to_uint16(float(val))
-    #     elif dtype.fmt == "?":
-    #         return 1 if bool(val) else 0
-    #     return val
-
-    # @classmethod
-    # def _from_storage(cls, stored: Any, dtype: DType) -> Any:
-    #     """Inverse of _to_storage, read a python value from raw buffer item."""
-    #     if dtype.fmt == "e" and not ARRAY_E_SUPPORTED:
-    #         return uint16_to_float16(stored)
-    #     elif dtype.fmt == "?":
-    #         return bool(stored)
-    #     return stored
 
 
 DTypeLike = Union[str, DType]

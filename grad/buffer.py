@@ -7,19 +7,35 @@ from grad.kernels import cpu_kernel  # type: ignore
 
 
 class Buffer:
-    __slots__ = ("dtype", "_storage", "_fmt", "numelem")
+    __slots__ = ("_dtype", "_storage")
 
-    def __init__(self, dtype: DTypeLike, iterable: list[Any], *, copy: bool = True):
-        self.dtype: DType = to_dtype(dtype)
-        self._storage = cpu_kernel.Buffer(iterable, self.dtype.fmt)
+    def __init__(self, iterable: Iterable[Any], dtype: DTypeLike, *, copy: bool = True):
+        self._dtype: DType = to_dtype(dtype)
+
+        self._storage = cpu_kernel.Buffer(iterable, self._dtype.name)
 
     def to(self, device: Device): ...  # noqa: E704
+
+    @property
+    def dtype(self) -> str:
+        return str(self._storage.get_dtype())
 
     def __len__(self):
         return self._storage.size()
 
     def __repr__(self) -> str:
-        return str(self.to_list())
+        return str(self._storage)
+
+    def share(self) -> "Buffer":
+        """Return a new Buffer instance that shares underlying storage."""
+        new_buff = Buffer.__new__(Buffer)
+        new_buff._dtype = self._dtype
+        new_buff._storage = self._storage
+        return new_buff
+
+    def shares_storage_with(self, other: "Buffer") -> bool:
+        """Check if this buffer shares its storage with other."""
+        return self._storage is getattr(other, "_storage", None)
 
     def iterstorage(self) -> Iterable[Any]:
         for i in range(self.__len__()):
@@ -28,25 +44,34 @@ class Buffer:
     def to_list(self) -> list[Any]:
         return [val for val in self.iterstorage()]
 
-    def __del__(self): ...
+    def __del__(self): ...  # noqa : E704
 
     @staticmethod
-    def _make_buffer(type_: DTypeLike, iterable: Iterable[Any]) -> memoryview: ...
+    def _make_buffer(type_: DTypeLike, iterable: Iterable[Any]) -> memoryview: ...  # noqa : E704
 
     def clone(self) -> "Buffer":
         """Create a copy of this buffer"""
-        ...
+        return Buffer(self.to_list(), self._dtype)
 
     def resize(self, new_size: int) -> "Buffer":
         """Create a new buffer with different size, preserving existing data where possible"""
-        ...
+        current_data = self.to_list()
+        if new_size > len(current_data):
+            current_data.extend([0] * (new_size - len(current_data)))
+        else:
+            current_data = current_data[:new_size]
+        return Buffer(current_data, self._dtype)
 
     @classmethod
-    def _filled(
-        cls: type["Buffer"], dtype: DTypeLike, num_elem: int, val: int | float
-    ) -> "Buffer": ...
+    def _filled(cls, dtype: DTypeLike, num_elem: int, val: int | float) -> "Buffer":
+        buff = cls.__new__(cls)
+        buff._dtype = out_dtype = to_dtype(dtype)
+        buff._storage = cpu_kernel.Buffer(num_elem, out_dtype.fmt, val)
+        return buff
 
     def __getitem__(self, idx: int):
+        if idx < 0 or idx >= len(self):
+            raise IndexError(f"Buffer index {idx} out of range")
         return self._storage[idx]
 
     def __setitem__(self, idx: int, value: Any) -> None:
@@ -54,4 +79,12 @@ class Buffer:
 
     def size_bytes(self) -> int:
         """Return the size of this buffer in bytes"""
-        return len(self._storage) * self._storage.itemsize if self._storage else 0
+        return len(self) * self._dtype.itemsize
+
+    @classmethod
+    def _from_cpp_buffer(cls, cpp_buffer: Any, dtype: DType):
+        """Create a Python Buffer from a C++ Buffer"""
+        buff = cls.__new__(cls)
+        buff._dtype = to_dtype(dtype)
+        buff._storage = cpp_buffer
+        return buff
