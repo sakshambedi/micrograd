@@ -9,9 +9,10 @@ from grad.kernels import cpu_kernel  # type: ignore
 class Buffer:
     __slots__ = ("_dtype", "_storage")
 
-    def __init__(self, dtype: DTypeLike, iterable: Iterable[Any], *, copy: bool = True):
+    def __init__(self, iterable: Iterable[Any], dtype: DTypeLike, *, copy: bool = True):
         self._dtype: DType = to_dtype(dtype)
-        self._storage = cpu_kernel.Buffer(iterable, self._dtype.fmt)
+
+        self._storage = cpu_kernel.Buffer(iterable, self._dtype.name)
 
     def to(self, device: Device): ...  # noqa: E704
 
@@ -23,7 +24,7 @@ class Buffer:
         return self._storage.size()
 
     def __repr__(self) -> str:
-        return str(self.to_list())
+        return str(self._storage)
 
     def share(self) -> "Buffer":
         """Return a new Buffer instance that shares underlying storage."""
@@ -50,7 +51,7 @@ class Buffer:
 
     def clone(self) -> "Buffer":
         """Create a copy of this buffer"""
-        return Buffer(self._dtype, self.to_list())
+        return Buffer(self.to_list(), self._dtype)
 
     def resize(self, new_size: int) -> "Buffer":
         """Create a new buffer with different size, preserving existing data where possible"""
@@ -59,7 +60,7 @@ class Buffer:
             current_data.extend([0] * (new_size - len(current_data)))
         else:
             current_data = current_data[:new_size]
-        return Buffer(self._dtype, current_data)
+        return Buffer(current_data, self._dtype)
 
     @classmethod
     def _filled(cls, dtype: DTypeLike, num_elem: int, val: int | float) -> "Buffer":

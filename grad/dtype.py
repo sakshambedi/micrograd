@@ -37,14 +37,14 @@ class DType(metaclass=DTypeMetaClass):
 class dtypes:
     # void: Final[DType] = DType.new(-1, 0, "void", None) # not supported
     bool: Final[DType] = DType.new(0, 1, "bool", "?")
-    int8: Final[DType] = DType.new(1, 1, "signed char", "b")
-    uint8: Final[DType] = DType.new(2, 1, "unsigned char", "B")
-    int16: Final[DType] = DType.new(3, 2, "short", "h")
-    uint16: Final[DType] = DType.new(4, 2, "unsigned short", "H")
-    int32: Final[DType] = DType.new(5, 4, "int", "i")
-    uint32: Final[DType] = DType.new(6, 4, "unsigned int", "I")
-    int64: Final[DType] = DType.new(7, 8, "long", "q")
-    uint64: Final[DType] = DType.new(8, 8, "unsigned long", "Q")
+    int8: Final[DType] = DType.new(1, 1, "int8", "b")
+    uint8: Final[DType] = DType.new(2, 1, "uint8", "B")
+    int16: Final[DType] = DType.new(3, 2, "uint16", "h")
+    uint16: Final[DType] = DType.new(4, 2, "uint16", "H")
+    int32: Final[DType] = DType.new(5, 4, "int32", "i")
+    uint32: Final[DType] = DType.new(6, 4, "uint32", "I")
+    int64: Final[DType] = DType.new(7, 8, "int64", "q")
+    uint64: Final[DType] = DType.new(8, 8, "unint64", "Q")
 
     # Floating point
     float16: Final[DType] = DType.new(9, 2, "float16", "e")

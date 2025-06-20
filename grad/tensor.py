@@ -44,13 +44,13 @@ class Tensor:
 
         if data is None:
             self.shape: tuple[int, ...] = ()
-            self.storage = Buffer(dtype, [0])
+            self.storage = Buffer([0], dtype)
         elif isinstance(data, (list, tuple)):
             self.shape: tuple[int, ...] = self._infer_shape(data)
-            self.storage = Buffer(dtype, list(self._flatten_gen(data)))
+            self.storage = Buffer(list(self._flatten_gen(data)), dtype)
         else:  # Handles single int or float
             self.shape: tuple[int, ...] = ()
-            self.storage = Buffer(dtype, [data])
+            self.storage = Buffer([data], dtype)
 
         self._stride: tuple[int, ...] = tensor_stride(self.shape)
 
@@ -87,7 +87,7 @@ class Tensor:
         size = max(0, (end - start + (step - (1 if step > 0 else -1))) // step)
 
         inst: Tensor = cls.__new__(cls)
-        inst.storage = Buffer(dtype, [start + i * step for i in range(size)])
+        inst.storage = Buffer([start + i * step for i in range(size)], dtype)
         inst.shape = (size,)
         inst._stride = tensor_stride(inst.shape)
         inst.device, inst.requires_grad = device, requires_grad
@@ -115,7 +115,7 @@ class Tensor:
 
         inst: Tensor = cls.__new__(cls)
 
-        inst.storage = Buffer(kw.get("dtype", dtypes.float32), random_data)
+        inst.storage = Buffer(random_data, kw.get("dtype", dtypes.float32))
         inst.shape = tuple(shape)
         inst._stride = tensor_stride(inst.shape)
         inst.device = kw.get("device", "cpu")
