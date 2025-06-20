@@ -223,8 +223,7 @@ PYBIND11_MODULE(cpu_kernel, m) {
       .def("size", &Buffer::size)
       .def("get_dtype", &Buffer::dtype)
       .def("__repr__", &Buffer::repr)
-      .def("__getitem__",
-           &Buffer::get_item) // Add this line to enable [] access
+      .def("__getitem__", &Buffer::get_item)
       .def("get_item", &Buffer::get_item)
       .def_property_readonly("__array_interface__", &Buffer::array_interface);
 }

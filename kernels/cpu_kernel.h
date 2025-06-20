@@ -3,6 +3,7 @@
 #ifndef KERNELS_CPU_KERNEL_H_
 #define KERNELS_CPU_KERNEL_H_
 
+#include "pybind11/pytypes.h"
 #include "vecbuffer.h"
 #include <algorithm>
 #include <array>
@@ -11,11 +12,6 @@
 #include <string>
 #include <unordered_map>
 #include <variant>
-
-// Forward declaration of half-precision floating point type
-// typedef struct {
-//   uint16_t data;
-// } half;
 
 namespace py = pybind11;
 
@@ -70,7 +66,8 @@ struct Buffer {
   [[nodiscard]] std::string repr() const;
 
   // Get item at the specified index
-  py::object get_item(size_t index) const;
+  [[nodiscard]] py::object get_item(size_t index) const;
+  [[nodiscard]] py::object set_item(size_t index, py::object val) const;
 
   // Set item at the specified index
   template <typename T> void set_item(size_t index, T value);

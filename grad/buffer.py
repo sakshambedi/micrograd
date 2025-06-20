@@ -7,11 +7,16 @@ from grad.kernels import cpu_kernel  # type: ignore
 
 
 class Buffer:
+    """A buffer class for storing data with a specific data type.
+
+    This class wraps around a C++ buffer implementation to store data efficiently.
+    It provides methods for creating, accessing, and modifying data buffers.
+    """
+
     __slots__ = ("_dtype", "_storage")
 
     def __init__(self, iterable: Iterable[Any], dtype: DTypeLike, *, copy: bool = True):
         self._dtype: DType = to_dtype(dtype)
-
         self._storage = cpu_kernel.Buffer(iterable, self._dtype.name)
 
     def to(self, device: Device): ...  # noqa: E704
@@ -66,7 +71,7 @@ class Buffer:
     def _filled(cls, dtype: DTypeLike, num_elem: int, val: int | float) -> "Buffer":
         buff = cls.__new__(cls)
         buff._dtype = out_dtype = to_dtype(dtype)
-        buff._storage = cpu_kernel.Buffer(num_elem, out_dtype.fmt, val)
+        buff._storage = cpu_kernel.Buffer(num_elem, out_dtype.name, val)
         return buff
 
     def __getitem__(self, idx: int):

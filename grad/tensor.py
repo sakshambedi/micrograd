@@ -47,7 +47,7 @@ class Tensor:
             self.storage = Buffer([0], dtype)
         elif isinstance(data, (list, tuple)):
             self.shape: tuple[int, ...] = self._infer_shape(data)
-            self.storage = Buffer(list(self._flatten_gen(data)), dtype)
+            self.storage = Buffer(data, dtype)
         else:  # Handles single int or float
             self.shape: tuple[int, ...] = ()
             self.storage = Buffer([data], dtype)
