@@ -31,4 +31,18 @@ template void binary_kernel<MulOp>(const Eigen::half *, const Eigen::half *,
 template void binary_kernel<DivOp>(const Eigen::half *, const Eigen::half *,
                                    Eigen::half *, std::size_t);
 
+// broadcast variants for float types
+template void binary_kernel_broadcast<float, AddOp>(
+    const float *, const std::vector<std::size_t> &, const float *,
+    const std::vector<std::size_t> &, float *, const std::vector<std::size_t> &);
+template void binary_kernel_broadcast<float, SubOp>(
+    const float *, const std::vector<std::size_t> &, const float *,
+    const std::vector<std::size_t> &, float *, const std::vector<std::size_t> &);
+template void binary_kernel_broadcast<float, MulOp>(
+    const float *, const std::vector<std::size_t> &, const float *,
+    const std::vector<std::size_t> &, float *, const std::vector<std::size_t> &);
+template void binary_kernel_broadcast<float, DivOp>(
+    const float *, const std::vector<std::size_t> &, const float *,
+    const std::vector<std::size_t> &, float *, const std::vector<std::size_t> &);
+
 #undef INST

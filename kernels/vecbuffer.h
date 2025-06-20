@@ -117,3 +117,65 @@ extern template void binary_kernel<Eigen::half, DivOp>(const Eigen::half *,
                                                        const Eigen::half *,
                                                        Eigen::half *,
                                                        std::size_t);
+
+template <typename T>
+inline std::vector<std::size_t>
+_make_stride(const std::vector<std::size_t> &shape) {
+  std::vector<std::size_t> stride(shape.size());
+  std::size_t acc = 1;
+  for (std::size_t i = shape.size(); i-- > 0;) {
+    stride[i] = acc;
+    acc *= shape[i];
+  }
+  return stride;
+}
+
+template <typename T, class Op>
+void binary_kernel_broadcast(const T *lhs, const std::vector<std::size_t> &lhs_shape,
+                             const T *rhs, const std::vector<std::size_t> &rhs_shape,
+                             T *out, const std::vector<std::size_t> &out_shape) {
+  auto lhs_stride = _make_stride<T>(lhs_shape);
+  auto rhs_stride = _make_stride<T>(rhs_shape);
+  auto out_stride = _make_stride<T>(out_shape);
+
+  std::size_t dims = out_shape.size();
+  std::size_t total = 1;
+  for (auto s : out_shape)
+    total *= s;
+
+  for (std::size_t idx = 0; idx < total; ++idx) {
+    std::size_t tmp = idx;
+    std::size_t loff = 0, roff = 0;
+    for (std::size_t d = 0; d < dims; ++d) {
+      std::size_t coord = tmp / out_stride[d];
+      tmp %= out_stride[d];
+
+      if (d >= dims - lhs_shape.size()) {
+        std::size_t lcoord = lhs_shape[d - (dims - lhs_shape.size())] == 1
+                                ? 0
+                                : coord;
+        loff += lcoord * lhs_stride[d - (dims - lhs_shape.size())];
+      }
+      if (d >= dims - rhs_shape.size()) {
+        std::size_t rcoord = rhs_shape[d - (dims - rhs_shape.size())] == 1
+                                ? 0
+                                : coord;
+        roff += rcoord * rhs_stride[d - (dims - rhs_shape.size())];
+      }
+    }
+    out[idx] = Op::scalar(lhs[loff], rhs[roff]);
+  }
+}
+
+extern template void binary_kernel_broadcast<float, AddOp>(
+    const float *, const std::vector<std::size_t> &, const float *,
+    const std::vector<std::size_t> &, float *, const std::vector<std::size_t> &);
+extern template void binary_kernel_broadcast<float, SubOp>(
+    const float *, const std::vector<std::size_t> &, const float *,
+    const std::vector<std::size_t> &, float *, const std::vector<std::size_t> &);
+extern template void binary_kernel_broadcast<float, MulOp>(
+    const float *, const std::vector<std::size_t> &, const float *,
+    const std::vector<std::size_t> &, float *, const std::vector<std::size_t> &);
+extern template void binary_kernel_broadcast<float, DivOp>(
+    const float *, const std::vector<std::size_t> &, const float *,
+    const std::vector<std::size_t> &, float *, const std::vector<std::size_t> &);

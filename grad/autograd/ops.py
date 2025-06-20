@@ -7,7 +7,7 @@ from grad.buffer import Buffer
 from grad.dtype import dtypes
 from grad.kernels import cpu_kernel  # type: ignore
 from grad.tensor import Tensor
-from grad.utils.misc import tensor_stride
+from grad.utils.misc import tensor_stride, broadcast_shape
 
 
 # from grad.utils.misc import _nd_indices
@@ -20,14 +20,18 @@ def _elementwise_forward(
         raise ValueError(f"Cannot perform {op_name} on tensors with no storage")
 
     rdtype = dtypes._upcast(a.dtype, b.dtype)
+    out_shape = broadcast_shape(a.shape, b.shape)
     cpp_result_buffer = kernel_func(
         a.storage._storage,
         b.storage._storage,
+        list(a.shape),
+        list(b.shape),
+        out_shape,
         rdtype.name,
     )
 
     result = Tensor.__new__(Tensor)
-    result.shape = a.shape  # TODO: add broadcasting support
+    result.shape = tuple(out_shape)
     result._stride = tensor_stride(result.shape)
     result.device = (a.device or b.device) or "cpu"
     result._contiguous = True

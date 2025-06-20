@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <iostream>
+#include <vector>
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <string>
@@ -204,6 +205,46 @@ py::object Buffer::get_item(size_t index) const {
 }
 
 // -----------------------------------------------------------------------------
+template <class Op>
+Buffer binary_op(const Buffer &lhs, const Buffer &rhs,
+                 const std::vector<std::size_t> &lhs_shape,
+                 const std::vector<std::size_t> &rhs_shape,
+                 const std::vector<std::size_t> &out_shape,
+                 const std::string &dtype) {
+  std::size_t out_size = 1;
+  for (auto s : out_shape)
+    out_size *= s;
+
+  Buffer out(out_size, dtype);
+
+  if (dtype == "float32") {
+    const auto &lvec = std::get<VecBuffer<float>>(lhs.raw());
+    const auto &rvec = std::get<VecBuffer<float>>(rhs.raw());
+    auto &ovec = std::get<VecBuffer<float>>(out.raw());
+    binary_kernel_broadcast<float, Op>(lvec.data(), lhs_shape, rvec.data(),
+                                       rhs_shape, ovec.data(), out_shape);
+  } else if (dtype == "float64") {
+    const auto &lvec = std::get<VecBuffer<double>>(lhs.raw());
+    const auto &rvec = std::get<VecBuffer<double>>(rhs.raw());
+    auto &ovec = std::get<VecBuffer<double>>(out.raw());
+    binary_kernel_broadcast<double, Op>(lvec.data(), lhs_shape, rvec.data(),
+                                        rhs_shape, ovec.data(), out_shape);
+  } else {
+    throw std::runtime_error("unsupported dtype for binary op");
+  }
+
+  return out;
+}
+
+Buffer add(const Buffer &lhs, const Buffer &rhs,
+           const std::vector<std::size_t> &lhs_shape,
+           const std::vector<std::size_t> &rhs_shape,
+           const std::vector<std::size_t> &out_shape,
+           const std::string &dtype) {
+  return binary_op<AddOp>(lhs, rhs, lhs_shape, rhs_shape, out_shape, dtype);
+}
+
+// -----------------------------------------------------------------------------
 PYBIND11_MODULE(cpu_kernel, m) {
   py::class_<Buffer>(m, "Buffer")
       .def(py::init([](py::list l, const std::string &dtype) {
@@ -226,4 +267,7 @@ PYBIND11_MODULE(cpu_kernel, m) {
       .def("__getitem__", &Buffer::get_item)
       .def("get_item", &Buffer::get_item)
       .def_property_readonly("__array_interface__", &Buffer::array_interface);
+
+  m.def("add", &add, py::arg("lhs"), py::arg("rhs"), py::arg("lhs_shape"),
+        py::arg("rhs_shape"), py::arg("out_shape"), py::arg("dtype"));
 }

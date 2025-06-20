@@ -31,6 +31,20 @@ class TestAddition:
         expected = np.array([[11, 22, 33], [44, 55, 66]])
         np.testing.assert_array_equal(out.to_numpy(), expected)
 
+    def test_broadcast_add(self):
+        t0 = Tensor.ones((3, 1))
+        t1 = Tensor.arange(3)
+        out = t0 + t1
+        expected = np.ones((3, 1)) + np.arange(3)
+        np.testing.assert_array_equal(out.to_numpy(), expected)
+
+    def test_broadcast_add_mismatched(self):
+        t0 = Tensor.ones((2, 3))
+        t1 = Tensor.arange(3)
+        out = t0 + t1
+        expected = np.ones((2, 3)) + np.arange(3)
+        np.testing.assert_array_equal(out.to_numpy(), expected)
+
     def test_add_shape_mismatch(self):
         t0 = Tensor([1, 2, 3])
         t1 = Tensor([[1, 2], [3, 4]])

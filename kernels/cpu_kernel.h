@@ -90,4 +90,10 @@ Buffer::Buffer(std::initializer_list<T> data, const std::string &dtype) {
       data_);
 }
 
+Buffer add(const Buffer &lhs, const Buffer &rhs,
+           const std::vector<std::size_t> &lhs_shape,
+           const std::vector<std::size_t> &rhs_shape,
+           const std::vector<std::size_t> &out_shape,
+           const std::string &dtype);
+
 #endif // KERNELS_CPU_KERNEL_H_
