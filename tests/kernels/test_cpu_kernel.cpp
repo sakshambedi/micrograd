@@ -62,21 +62,17 @@ TEST(BufferTest, DTypeCheck) {
   EXPECT_EQ(u64buf.dtype(), "uint64");
 }
 
-// // Test set and get operations for various dtypes
-//  TEST(BufferTest, SetAndGet) {
+// Test set and get operations for various dtypes
+// TEST(BufferTest, SetAndGet) {
 //   py::scoped_interpreter guard{};
-
+//
 //   Buffer fbuf(1, "float32");
 //   fbuf.set_item(0, 3.5);
 //   EXPECT_NEAR(py::cast<float>(fbuf.get_item(0)), 3.5f, 1e-6f);
-
+//
 //   Buffer ibuf(1, "int32");
 //   ibuf.set_item(0, 7);
 //   EXPECT_EQ(py::cast<int>(ibuf.get_item(0)), 7);
-
-//   Buffer bbuf(1, "bool");
-//   bbuf.set_item(0, 1.0);
-//   EXPECT_TRUE(py::cast<bool>(bbuf.get_item(0)));
 // }
 
 // Test initializer list constructor
@@ -87,42 +83,55 @@ TEST(BufferTest, InitializerListConstructor) {
   Buffer fbuf({1.0f, 2.0f, 3.0f, 4.0f, 5.0f}, "float32");
   EXPECT_EQ(fbuf.size(), 5);
   EXPECT_EQ(fbuf.dtype(), "float32");
+  // Check values
+  EXPECT_NEAR(py::cast<float>(fbuf.get_item(0)), 1.0f, 1e-6f);
+  EXPECT_NEAR(py::cast<float>(fbuf.get_item(1)), 2.0f, 1e-6f);
+  EXPECT_NEAR(py::cast<float>(fbuf.get_item(2)), 3.0f, 1e-6f);
+  EXPECT_NEAR(py::cast<float>(fbuf.get_item(3)), 4.0f, 1e-6f);
+  EXPECT_NEAR(py::cast<float>(fbuf.get_item(4)), 5.0f, 1e-6f);
 
   // Int64 initialization
   Buffer ibuf({-1, 0, 1}, "int64");
   EXPECT_EQ(ibuf.size(), 3);
   EXPECT_EQ(ibuf.dtype(), "int64");
+  EXPECT_EQ(py::cast<int64_t>(ibuf.get_item(0)), -1);
+  EXPECT_EQ(py::cast<int64_t>(ibuf.get_item(1)), 0);
+  EXPECT_EQ(py::cast<int64_t>(ibuf.get_item(2)), 1);
 
   // UInt8 initialization
   Buffer u8buf({0, 128, 255}, "uint8");
   EXPECT_EQ(u8buf.size(), 3);
   EXPECT_EQ(u8buf.dtype(), "uint8");
+  EXPECT_EQ(py::cast<uint8_t>(u8buf.get_item(0)), 0);
+  EXPECT_EQ(py::cast<uint8_t>(u8buf.get_item(1)), 128);
+  EXPECT_EQ(py::cast<uint8_t>(u8buf.get_item(2)), 255);
 
-  // Float64 initialization with mixed values
   Buffer dbuf({1.5, 2.5, 3.14159}, "float64");
   EXPECT_EQ(dbuf.size(), 3);
   EXPECT_EQ(dbuf.dtype(), "float64");
+  EXPECT_NEAR(py::cast<double>(dbuf.get_item(0)), 1.5, 1e-9);
+  EXPECT_NEAR(py::cast<double>(dbuf.get_item(1)), 2.5, 1e-9);
+  EXPECT_NEAR(py::cast<double>(dbuf.get_item(2)), 3.14159, 1e-9);
 
-  // Empty initialization
-  Buffer empty_buf({}, "int32");
+  Buffer empty_buf({}, "int16");
   EXPECT_EQ(empty_buf.size(), 0);
-  EXPECT_EQ(empty_buf.dtype(), "int32");
+  EXPECT_EQ(empty_buf.dtype(), "int16");
 
-  // Type conversion during initialization
   Buffer conv_buf({1.1f, 2.9f, 3.5f}, "int32");
   EXPECT_EQ(conv_buf.size(), 3);
   EXPECT_EQ(conv_buf.dtype(), "int32");
-  // Values should be converted from float to int
+
+  EXPECT_EQ(py::cast<int32_t>(conv_buf.get_item(0)), 1);
+  EXPECT_EQ(py::cast<int32_t>(conv_buf.get_item(1)), 2);
+  EXPECT_EQ(py::cast<int32_t>(conv_buf.get_item(2)), 3);
 }
 
 // Test py::buffer constructor
 TEST(BufferTest, PyBufferConstructor) {
   py::scoped_interpreter guard{};
 
-  // Create a NumPy array through Python
   py::module np = py::module::import("numpy");
 
-  // Test with float32 array
   py::array_t<float> np_float =
       np.attr("array")(py::make_tuple(1.0f, 2.0f, 3.0f, 4.0f), "float32");
   Buffer float_buf(np_float, "float32");
@@ -162,70 +171,49 @@ TEST(BufferTest, ConstructorExceptions) {
 // // Test buffer initialization with same value across different dtypes
 // TEST(BufferTest, InitializeWithValue) {
 //   py::scoped_interpreter guard{};
-
+//
 //   // Float buffers with same value
 //   Buffer f32buf(5, "float32", py::cast(3.14f));
 //   for (std::size_t i = 0; i < f32buf.size(); ++i) {
 //     EXPECT_NEAR(py::cast<float>(f32buf.get_item(i)), 3.14f, 1e-6f);
 //   }
-
+//
 //   Buffer f64buf(3, "float64", py::cast(2.71828));
 //   for (std::size_t i = 0; i < f64buf.size(); ++i) {
 //     EXPECT_NEAR(py::cast<double>(f64buf.get_item(i)), 2.71828, 1e-9);
 //   }
-
+//
 //   // float16 buffer test
 //   Buffer f16buf(4, "float16", py::cast(1.5f));
 //   for (std::size_t i = 0; i < f16buf.size(); ++i) {
 //     EXPECT_NEAR(py::cast<float>(f16buf.get_item(i)), 1.5f, 1e-3f);
 //   }
-
+//
 //   // Integer buffers with same value
 //   Buffer i32buf(4, "int32", py::cast(42));
 //   for (std::size_t i = 0; i < i32buf.size(); ++i) {
 //     EXPECT_EQ(py::cast<int>(i32buf.get_item(i)), 42);
 //   }
-
+//
 //   // Use a large negative int64_t value that can be reliably represented
 //   int64_t large_neg_value = -9223372036854775800LL;
 //   Buffer i64buf(4, "int64", py::cast(large_neg_value));
 //   for (std::size_t i = 0; i < i64buf.size(); ++i) {
 //     EXPECT_EQ(py::cast<int64_t>(i64buf.get_item(i)), large_neg_value);
 //   }
-
+//
 //   Buffer u8buf(3, "uint8", py::cast(uint8_t(255)));
 //   for (std::size_t i = 0; i < u8buf.size(); ++i) {
 //     EXPECT_EQ(py::cast<uint8_t>(u8buf.get_item(i)), uint8_t(255));
 //   }
-
-//   // Boolean buffers with different representations
-//   Buffer bbuf1(5, "bool", py::cast(true));
-//   for (std::size_t i = 0; i < bbuf1.size(); ++i) {
-//     EXPECT_TRUE(py::cast<bool>(bbuf1.get_item(i)));
-//   }
-
-//   Buffer bbuf2(5, "bool", py::cast(1));
-//   for (std::size_t i = 0; i < bbuf2.size(); ++i) {
-//     EXPECT_TRUE(py::cast<bool>(bbuf2.get_item(i)));
-//   }
-
-//   Buffer bbuf3(5, "bool", py::cast(false));
-//   for (std::size_t i = 0; i < bbuf3.size(); ++i) {
-//     EXPECT_FALSE(py::cast<bool>(bbuf3.get_item(i)));
-//   }
-
-//   Buffer bbuf4(5, "bool", py::cast(0));
-//   for (std::size_t i = 0; i < bbuf4.size(); ++i) {
-//     EXPECT_FALSE(py::cast<bool>(bbuf4.get_item(i)));
-//   }
 // }
 
-// // Out-of-bounds accesses should trigger a debug assertion
-// TEST(BufferDeathTest, GetItemOutOfBounds) {
-//   py::scoped_interpreter guard{};
-//   Buffer buf(1, "float32");
-//   EXPECT_DEATH({ buf.get_item(2); }, "index");
-// }
+// Out-of-bounds accesses should throw an exception
+TEST(BufferTest, GetItemOutOfBounds) {
+  py::scoped_interpreter guard{};
+  Buffer buf(1, "float32");
+  EXPECT_THROW({ buf.get_item(2); }, std::out_of_range);
+}
 
 // // Additional tests for boolean buffer initialization
 // TEST(BufferTest, BooleanBufferConversions) {

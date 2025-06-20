@@ -3,6 +3,7 @@
 #include "cpu_kernel.h"
 #include <algorithm>
 #include <array>
+#include <iostream>
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <string>
@@ -10,22 +11,6 @@
 #include <variant>
 
 namespace py = pybind11;
-
-// enum class DType : uint8_t {
-//   // BOOL,  // Commented out bool type for now
-//   INT8,
-//   UINT8,
-//   INT16,
-//   UINT16,
-//   INT32,
-//   UINT32,
-//   INT64,
-//   UINT64,
-//   FLOAT16,
-//   FLOAT32,
-//   FLOAT64,
-//   NUM_TYPES
-// };
 
 static const std::unordered_map<std::string, DType> str_to_dtype = {
     // {"bool", DType::BOOL},    // Commented out bool type for now
@@ -160,12 +145,86 @@ void Buffer::init(std::size_t n, DType t) {
   }
 }
 
+std::string Buffer::repr() const {
+  std::ostringstream oss;
+  oss << "Buffer(dtype=" << dtype_to_string(dtype_) << ", size=" << size()
+      << ", data=[";
+
+  const size_t max_display_elements = 10;
+  const bool truncated = size() > max_display_elements;
+  const size_t display_count = truncated ? max_display_elements : size();
+
+  std::visit(
+      [&](auto &b) {
+        using T = std::decay_t<decltype(b[0])>;
+
+        for (size_t i = 0; i < display_count; ++i) {
+          if (i > 0)
+            oss << ", ";
+
+          if constexpr (std::is_same_v<T, int8_t>)
+            oss << static_cast<int>(b[i]); // Display as number, not char
+          else if constexpr (std::is_same_v<T, uint8_t>)
+            oss << static_cast<unsigned>(b[i]); // Display as number, not char
+          else if constexpr (std::is_same_v<T, half>)
+            oss << static_cast<float>(b[i]) << "f";
+          else if constexpr (std::is_same_v<T, float>)
+            oss << b[i] << "f";
+          else if constexpr (std::is_same_v<T, double>)
+            oss << b[i];
+          else
+            oss << b[i];
+        }
+
+        if (truncated) {
+          oss << ", ...";
+        }
+      },
+      data_);
+  oss << "])";
+  return oss.str();
+}
+
+py::object Buffer::get_item(size_t index) const {
+  if (index >= size()) {
+    throw std::out_of_range("Buffer index out of range");
+  }
+
+  return std::visit(
+      [index](auto &b) -> py::object {
+        using ValueType = std::decay_t<decltype(b[0])>;
+        if constexpr (std::is_same_v<ValueType, half>) {
+          return py::cast(
+              static_cast<float>(b[index])); // Convert half to float for Python
+        } else {
+          return py::cast(b[index]);
+        }
+      },
+      data_);
+}
+
 // -----------------------------------------------------------------------------
 PYBIND11_MODULE(cpu_kernel, m) {
   py::class_<Buffer>(m, "Buffer")
+      .def(py::init([](py::list l, const std::string &dtype) {
+        py::object np = py::module_::import("numpy");
+
+        py::object arr = np.attr("array")(l, py::arg("dtype") = dtype);
+        // Ensure the array is C-contiguous (row-major order)
+        // arr = arr.attr("ravel")().attr("copy")();
+        if (py::cast<int>(arr.attr("ndim")) > 1) {
+          arr = arr.attr("flatten")();
+        }
+
+        return Buffer(arr, dtype);
+      }))
       .def(py::init<std::size_t, const std::string &>())
       .def(py::init<py::buffer, const std::string &>())
       .def("size", &Buffer::size)
       .def("get_dtype", &Buffer::dtype)
+      .def("__repr__", &Buffer::repr)
+      .def("__getitem__",
+           &Buffer::get_item) // Add this line to enable [] access
+      .def("get_item", &Buffer::get_item)
       .def_property_readonly("__array_interface__", &Buffer::array_interface);
 }

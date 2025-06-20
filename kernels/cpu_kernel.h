@@ -19,7 +19,6 @@
 
 namespace py = pybind11;
 
-// dtype enum and helpers
 enum class DType : uint8_t {
   // BOOL,  // Commented out bool type for now
   INT8,
@@ -68,6 +67,13 @@ struct Buffer {
   [[nodiscard]] py::dict array_interface() const;
 
   [[nodiscard]] std::string dtype() const;
+  [[nodiscard]] std::string repr() const;
+
+  // Get item at the specified index
+  py::object get_item(size_t index) const;
+
+  // Set item at the specified index
+  template <typename T> void set_item(size_t index, T value);
 
 private:
   void init(std::size_t n, DType t);
