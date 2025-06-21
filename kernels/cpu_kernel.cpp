@@ -9,6 +9,7 @@
 #include <string>
 #include <unordered_map>
 #include <variant>
+#include <vector>
 
 namespace py = pybind11;
 
@@ -185,6 +186,34 @@ std::string Buffer::repr() const {
   return oss.str();
 }
 
+Buffer Buffer::cast(const std::string &new_dtype) const {
+  DType target_dtype = dtype_from_string(new_dtype);
+  if (target_dtype == dtype_) {
+    return *this;
+  }
+
+  Buffer result(size(), new_dtype);
+
+  std::visit(
+      [&](const auto &src_buf) {
+        using SrcType = std::decay_t<decltype(src_buf[0])>;
+
+        std::visit(
+            [&](auto &dst_buf) {
+              using DstType = std::decay_t<decltype(dst_buf[0])>;
+
+              if constexpr (!std::is_same_v<SrcType, DstType>) {
+                // Use VecBuffer's cast method directly
+                dst_buf = src_buf.template cast<DstType>();
+              }
+            },
+            result.raw());
+      },
+      data_);
+
+  return result;
+}
+
 py::object Buffer::get_item(size_t index) const {
   if (index >= size()) {
     throw std::out_of_range("Buffer index out of range");
@@ -225,5 +254,9 @@ PYBIND11_MODULE(cpu_kernel, m) {
       .def("__repr__", &Buffer::repr)
       .def("__getitem__", &Buffer::get_item)
       .def("get_item", &Buffer::get_item)
+      .def("cast", &Buffer::cast)
       .def_property_readonly("__array_interface__", &Buffer::array_interface);
+
+  // m.def("add", &add, py::arg("lhs"), py::arg("rhs"), py::arg("lhs_shape"),
+  //       py::arg("rhs_shape"), py::arg("out_shape"), py::arg("dtype"));
 }
