@@ -4,6 +4,7 @@
 #include <Eigen/Core>
 #include <algorithm>
 #include <cstddef>
+#include <limits>
 #include <vector>
 #include <xsimd/xsimd.hpp>
 
@@ -23,12 +24,38 @@ public:
     }
   }
 
+  // Constructor from initializer list for ease of use in tests
+  VecBuffer(std::initializer_list<T> init)
+      : data_(std::max(size_t(1), init.size())), size_(init.size()) {
+    if (init.size() > 0) {
+      std::copy(init.begin(), init.end(), data_.data());
+    }
+  }
+
   [[nodiscard]] std::size_t size() const { return size_; }
   T *data() { return data_.data(); }
   const T *data() const { return data_.data(); }
 
   T &operator[](std::size_t i) { return data_[i]; }
   const T &operator[](std::size_t i) const { return data_[i]; }
+
+  // Cast buffer from one type to another (static method)
+  template <typename OutT> static VecBuffer<OutT> cast(const VecBuffer<T> &in) {
+    std::size_t n = in.size();
+    VecBuffer<OutT> out(n);
+
+    Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>> a(in.data(), n);
+    Eigen::Map<Eigen::Array<OutT, Eigen::Dynamic, 1>> b(out.data(), n);
+
+    b = a.template cast<OutT>();
+
+    return out;
+  }
+
+  // Non-static member cast method for convenience
+  template <typename OutT> VecBuffer<OutT> cast() const {
+    return VecBuffer<T>::template cast<OutT>(*this);
+  }
 
 private:
   AlignedVec<T> data_;
@@ -54,30 +81,13 @@ struct DivOp {
 };
 
 template <typename T, class Op>
-void binary_kernel(const T *lhs, const T *rhs, T *out, std::size_t n) {
-  using batch = xsimd::batch<T>;
-  constexpr std::size_t stride = batch::size;
-  std::size_t i = 0;
-  for (; i + stride <= n; i += stride) {
-    batch l = batch::load_aligned(lhs + i);
-    batch r = batch::load_aligned(rhs + i);
-    batch o = Op::apply(l, r);
-    o.store_aligned(out + i);
-  }
-  for (; i < n; ++i) {
-    out[i] = Op::scalar(lhs[i], rhs[i]);
-  }
-}
+void binary_kernel(const T *lhs, const T *rhs, T *out, std::size_t n);
 
 // Specialized non-SIMD implementation for Eigen::half,
 // keeps fp16 supports on cpu
 template <class Op>
 void binary_kernel(const Eigen::half *lhs, const Eigen::half *rhs,
-                   Eigen::half *out, std::size_t n) {
-  for (std::size_t i = 0; i < n; ++i) {
-    out[i] = Op::scalar(lhs[i], rhs[i]);
-  }
-}
+                   Eigen::half *out, std::size_t n);
 
 extern template void binary_kernel<float, AddOp>(const float *, const float *,
                                                  float *, std::size_t);
@@ -119,63 +129,28 @@ extern template void binary_kernel<Eigen::half, DivOp>(const Eigen::half *,
                                                        std::size_t);
 
 template <typename T>
-inline std::vector<std::size_t>
-_make_stride(const std::vector<std::size_t> &shape) {
-  std::vector<std::size_t> stride(shape.size());
-  std::size_t acc = 1;
-  for (std::size_t i = shape.size(); i-- > 0;) {
-    stride[i] = acc;
-    acc *= shape[i];
-  }
-  return stride;
-}
+std::vector<std::size_t> _make_stride(const std::vector<std::size_t> &shape);
 
 template <typename T, class Op>
-void binary_kernel_broadcast(const T *lhs, const std::vector<std::size_t> &lhs_shape,
-                             const T *rhs, const std::vector<std::size_t> &rhs_shape,
-                             T *out, const std::vector<std::size_t> &out_shape) {
-  auto lhs_stride = _make_stride<T>(lhs_shape);
-  auto rhs_stride = _make_stride<T>(rhs_shape);
-  auto out_stride = _make_stride<T>(out_shape);
-
-  std::size_t dims = out_shape.size();
-  std::size_t total = 1;
-  for (auto s : out_shape)
-    total *= s;
-
-  for (std::size_t idx = 0; idx < total; ++idx) {
-    std::size_t tmp = idx;
-    std::size_t loff = 0, roff = 0;
-    for (std::size_t d = 0; d < dims; ++d) {
-      std::size_t coord = tmp / out_stride[d];
-      tmp %= out_stride[d];
-
-      if (d >= dims - lhs_shape.size()) {
-        std::size_t lcoord = lhs_shape[d - (dims - lhs_shape.size())] == 1
-                                ? 0
-                                : coord;
-        loff += lcoord * lhs_stride[d - (dims - lhs_shape.size())];
-      }
-      if (d >= dims - rhs_shape.size()) {
-        std::size_t rcoord = rhs_shape[d - (dims - rhs_shape.size())] == 1
-                                ? 0
-                                : coord;
-        roff += rcoord * rhs_stride[d - (dims - rhs_shape.size())];
-      }
-    }
-    out[idx] = Op::scalar(lhs[loff], rhs[roff]);
-  }
-}
+void binary_kernel_broadcast(const T *lhs,
+                             const std::vector<std::size_t> &lhs_shape,
+                             const T *rhs,
+                             const std::vector<std::size_t> &rhs_shape, T *out,
+                             const std::vector<std::size_t> &out_shape);
 
 extern template void binary_kernel_broadcast<float, AddOp>(
     const float *, const std::vector<std::size_t> &, const float *,
-    const std::vector<std::size_t> &, float *, const std::vector<std::size_t> &);
+    const std::vector<std::size_t> &, float *,
+    const std::vector<std::size_t> &);
 extern template void binary_kernel_broadcast<float, SubOp>(
     const float *, const std::vector<std::size_t> &, const float *,
-    const std::vector<std::size_t> &, float *, const std::vector<std::size_t> &);
+    const std::vector<std::size_t> &, float *,
+    const std::vector<std::size_t> &);
 extern template void binary_kernel_broadcast<float, MulOp>(
     const float *, const std::vector<std::size_t> &, const float *,
-    const std::vector<std::size_t> &, float *, const std::vector<std::size_t> &);
+    const std::vector<std::size_t> &, float *,
+    const std::vector<std::size_t> &);
 extern template void binary_kernel_broadcast<float, DivOp>(
     const float *, const std::vector<std::size_t> &, const float *,
-    const std::vector<std::size_t> &, float *, const std::vector<std::size_t> &);
+    const std::vector<std::size_t> &, float *,
+    const std::vector<std::size_t> &);

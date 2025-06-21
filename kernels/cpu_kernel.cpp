@@ -4,12 +4,12 @@
 #include <algorithm>
 #include <array>
 #include <iostream>
-#include <vector>
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <string>
 #include <unordered_map>
 #include <variant>
+#include <vector>
 
 namespace py = pybind11;
 
@@ -186,6 +186,34 @@ std::string Buffer::repr() const {
   return oss.str();
 }
 
+Buffer Buffer::cast(const std::string &new_dtype) const {
+  DType target_dtype = dtype_from_string(new_dtype);
+  if (target_dtype == dtype_) {
+    return *this;
+  }
+
+  Buffer result(size(), new_dtype);
+
+  std::visit(
+      [&](const auto &src_buf) {
+        using SrcType = std::decay_t<decltype(src_buf[0])>;
+
+        std::visit(
+            [&](auto &dst_buf) {
+              using DstType = std::decay_t<decltype(dst_buf[0])>;
+
+              if constexpr (!std::is_same_v<SrcType, DstType>) {
+                // Use VecBuffer's cast method directly
+                dst_buf = src_buf.template cast<DstType>();
+              }
+            },
+            result.raw());
+      },
+      data_);
+
+  return result;
+}
+
 py::object Buffer::get_item(size_t index) const {
   if (index >= size()) {
     throw std::out_of_range("Buffer index out of range");
@@ -202,46 +230,6 @@ py::object Buffer::get_item(size_t index) const {
         }
       },
       data_);
-}
-
-// -----------------------------------------------------------------------------
-template <class Op>
-Buffer binary_op(const Buffer &lhs, const Buffer &rhs,
-                 const std::vector<std::size_t> &lhs_shape,
-                 const std::vector<std::size_t> &rhs_shape,
-                 const std::vector<std::size_t> &out_shape,
-                 const std::string &dtype) {
-  std::size_t out_size = 1;
-  for (auto s : out_shape)
-    out_size *= s;
-
-  Buffer out(out_size, dtype);
-
-  if (dtype == "float32") {
-    const auto &lvec = std::get<VecBuffer<float>>(lhs.raw());
-    const auto &rvec = std::get<VecBuffer<float>>(rhs.raw());
-    auto &ovec = std::get<VecBuffer<float>>(out.raw());
-    binary_kernel_broadcast<float, Op>(lvec.data(), lhs_shape, rvec.data(),
-                                       rhs_shape, ovec.data(), out_shape);
-  } else if (dtype == "float64") {
-    const auto &lvec = std::get<VecBuffer<double>>(lhs.raw());
-    const auto &rvec = std::get<VecBuffer<double>>(rhs.raw());
-    auto &ovec = std::get<VecBuffer<double>>(out.raw());
-    binary_kernel_broadcast<double, Op>(lvec.data(), lhs_shape, rvec.data(),
-                                        rhs_shape, ovec.data(), out_shape);
-  } else {
-    throw std::runtime_error("unsupported dtype for binary op");
-  }
-
-  return out;
-}
-
-Buffer add(const Buffer &lhs, const Buffer &rhs,
-           const std::vector<std::size_t> &lhs_shape,
-           const std::vector<std::size_t> &rhs_shape,
-           const std::vector<std::size_t> &out_shape,
-           const std::string &dtype) {
-  return binary_op<AddOp>(lhs, rhs, lhs_shape, rhs_shape, out_shape, dtype);
 }
 
 // -----------------------------------------------------------------------------
@@ -266,8 +254,9 @@ PYBIND11_MODULE(cpu_kernel, m) {
       .def("__repr__", &Buffer::repr)
       .def("__getitem__", &Buffer::get_item)
       .def("get_item", &Buffer::get_item)
+      .def("cast", &Buffer::cast)
       .def_property_readonly("__array_interface__", &Buffer::array_interface);
 
-  m.def("add", &add, py::arg("lhs"), py::arg("rhs"), py::arg("lhs_shape"),
-        py::arg("rhs_shape"), py::arg("out_shape"), py::arg("dtype"));
+  // m.def("add", &add, py::arg("lhs"), py::arg("rhs"), py::arg("lhs_shape"),
+  //       py::arg("rhs_shape"), py::arg("out_shape"), py::arg("dtype"));
 }
