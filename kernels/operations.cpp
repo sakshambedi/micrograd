@@ -2,6 +2,7 @@
 // All rights reserved.
 #include "operations.h"
 #include <algorithm>
+#include <limits>
 #include <string>
 
 namespace simd_ops {
@@ -47,11 +48,35 @@ struct MulOp {
 
 struct DivOp {
   template <typename T> static constexpr T apply_scalar(T a, T b) noexcept {
+    // Handle special case: Inf/0 = NaN in IEEE 754
+    if (std::isinf(a) && b == T(0)) {
+      return std::numeric_limits<T>::quiet_NaN();
+    }
     return a / b;
   }
 
   template <typename Batch>
   static constexpr Batch apply_simd(const Batch &a, const Batch &b) noexcept {
+    using T = typename Batch::value_type;
+
+    // Create masks for special case: Inf/0 = NaN
+    // if constexpr (std::is_floating_point_v<T>) {
+    //   // Check for infinity in a and zero in b
+    //   auto inf_mask = xsimd::isinf(a);
+    //   auto zero_mask = (b == Batch(T(0)));
+    //   auto special_mask = inf_mask && zero_mask;
+
+    //   // If we have any special cases
+    //   if (xsimd::any(special_mask)) {
+    //     // Regular division
+    //     auto result = a / b;
+    //     // Replace Inf/0 cases with NaN
+    //     auto nan_value = Batch(std::numeric_limits<T>::quiet_NaN());
+    //     return xsimd::select(special_mask, nan_value, result);
+    //   }
+    // }
+
+    // Normal case
     return a / b;
   }
 
