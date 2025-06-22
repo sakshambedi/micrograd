@@ -3,6 +3,20 @@ project(micrograd)
 
 set(CMAKE_CXX_STANDARD 17)
 
+# Enable SIMD optimizations while maintaining IEEE 754 compliance
+set(CMAKE_CXX_FLAGS_RELEASE
+    "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
+# Use targeted optimizations that preserve NaN and Infinity behaviors
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-math-errno -freciprocal-math")
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mtune=native")
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2 -mfma")
+    endif()
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX2")
+endif()
+
 # Set up vcpkg toolchain if not already set
 if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     if(EXISTS "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
@@ -12,11 +26,15 @@ if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     elseif(WIN32 AND EXISTS "C:/vcpkg/scripts/buildsystems/vcpkg.cmake")
         set(CMAKE_TOOLCHAIN_FILE "C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
             CACHE STRING "Vcpkg toolchain file")
-    elseif(UNIX AND NOT APPLE AND EXISTS "/usr/local/vcpkg/scripts/buildsystems/vcpkg.cmake")
-        set(CMAKE_TOOLCHAIN_FILE "/usr/local/vcpkg/scripts/buildsystems/vcpkg.cmake"
-            CACHE STRING "Vcpkg toolchain file")
-    elseif(APPLE AND EXISTS "/Users/${USER}/vcpkg/scripts/buildsystems/vcpkg.cmake")
-        set(CMAKE_TOOLCHAIN_FILE "/Users/${USER}/vcpkg/scripts/buildsystems/vcpkg.cmake"
+    elseif(UNIX AND NOT APPLE AND EXISTS
+           "/usr/local/vcpkg/scripts/buildsystems/vcpkg.cmake")
+        set(CMAKE_TOOLCHAIN_FILE
+            "/usr/local/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING
+            "Vcpkg toolchain file")
+    elseif(APPLE AND EXISTS
+    "/Users/${USER}/vcpkg/scripts/buildsystems/vcpkg.cmake")
+        set(CMAKE_TOOLCHAIN_FILE
+            "/Users/${USER}/vcpkg/scripts/buildsystems/vcpkg.cmake"
             CACHE STRING "Vcpkg toolchain file")
     endif()
 endif()
@@ -68,7 +86,9 @@ endif()
 # Create a static library for testing
 add_library(cpu_kernel_lib STATIC
     kernels/cpu_kernel.cpp
-    kernels/vecbuffer.cpp)
+    kernels/vecbuffer.cpp
+    kernels/operations.h
+    kernels/operations.cpp)
 target_include_directories(cpu_kernel_lib PRIVATE
     ${PYTHON_INCLUDE_DIRS}
     ${pybind11_SOURCE_DIR}/include
@@ -76,7 +96,11 @@ target_include_directories(cpu_kernel_lib PRIVATE
 )
 
 # Create Python module
-pybind11_add_module(cpu_kernel kernels/cpu_kernel.cpp kernels/vecbuffer.cpp)
+pybind11_add_module(cpu_kernel
+    kernels/cpu_kernel.cpp
+    kernels/vecbuffer.cpp
+    kernels/operations.h
+    kernels/operations.cpp)
 target_include_directories(cpu_kernel PRIVATE
     ${PYTHON_INCLUDE_DIRS}
     ${XSIMD_INCLUDE_DIR}

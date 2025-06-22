@@ -3,15 +3,17 @@
 #ifndef KERNELS_CPU_KERNEL_H_
 #define KERNELS_CPU_KERNEL_H_
 
-#include "pybind11/pytypes.h"
 #include "vecbuffer.h"
+#include <Eigen/Core>
 #include <algorithm>
 #include <array>
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
+#include <pybind11/pytypes.h>
 #include <string>
 #include <unordered_map>
 #include <variant>
+#include <vector>
 
 namespace py = pybind11;
 
@@ -48,7 +50,20 @@ struct Buffer {
 
   // Constructor for initializing from data list (mainly for testing)
   template <typename T>
-  Buffer(std::initializer_list<T> data, const std::string &dtype);
+  Buffer(std::initializer_list<T> data, const std::string &dtype) {
+    init(data.size(), dtype_from_string(dtype));
+
+    // Convert the input data to the target type and copy it into our buffer
+    std::visit(
+        [&](auto &buf) {
+          using DestT = std::decay_t<decltype(buf[0])>;
+          size_t i = 0;
+          for (const T &val : data) {
+            buf[i++] = static_cast<DestT>(val);
+          }
+        },
+        data_);
+  }
 
   // Constructor taking a Python buffer view
   Buffer(const py::buffer &view, const std::string &dtype);
@@ -57,6 +72,7 @@ struct Buffer {
 
   // Access to the raw buffer variant
   [[nodiscard]] const BufferVariant &raw() const;
+
   BufferVariant &raw();
 
   // Returns the NumPy array interface dictionary for interoperability
@@ -72,22 +88,22 @@ struct Buffer {
   // Set item at the specified index
   template <typename T> void set_item(size_t index, T value);
 
+  // Cast the buffer to a different data type
+  [[nodiscard]] Buffer cast(const std::string &new_dtype) const;
+
 private:
   void init(std::size_t n, DType t);
   BufferVariant data_;
   DType dtype_;
 };
 
-template <typename T>
-Buffer::Buffer(std::initializer_list<T> data, const std::string &dtype) {
-  init(data.size(), dtype_from_string(dtype));
-  std::visit(
-      [&](auto &buf) {
-        using BufT = std::decay_t<decltype(buf[0])>;
-        std::transform(data.begin(), data.end(), buf.data(),
-                       [](const T &val) { return static_cast<BufT>(val); });
-      },
-      data_);
-}
+// Buffer add(const Buffer &lhs, const Buffer &rhs,
+//            const std::vector<std::size_t> &lhs_shape,
+//            const std::vector<std::size_t> &rhs_shape,
+//            const std::vector<std::size_t> &out_shape, const std::string
+//            &dtype);
+
+// No external cast_buffer function needed, VecBuffer has built-in cast
+// functionality
 
 #endif // KERNELS_CPU_KERNEL_H_
