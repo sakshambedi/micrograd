@@ -1,14 +1,15 @@
 // Copyright 2025 Saksham Bedi hello@sakshambedi.com
 // All rights reserved.
 #include "../../kernels/cpu_kernel.h"
+#include "../../kernels/operations.h"
 #include <cassert>
 #include <gtest/gtest.h>
 #include <iostream>
 #include <limits>
 #include <pybind11/embed.h>
 #include <pybind11/numpy.h>
+#include <vector>
 namespace py = pybind11;
-
 TEST(BufferTest, ConstructorAndSize) {
   py::scoped_interpreter guard{};
 
@@ -752,56 +753,17 @@ TEST(CastBufferTest, ComprehensiveTypeConversionGrid) {
   }
 }
 
-// // Additional tests for boolean buffer initialization
-// TEST(BufferTest, BooleanBufferConversions) {
+// TEST(BufferTest, AddOperation) {
 //   py::scoped_interpreter guard{};
 
-//   // Test conversion from floating point to boolean
-//   Buffer bbuf1(3, "bool", py::cast(0.0f));
-//   for (std::size_t i = 0; i < bbuf1.size(); ++i) {
-//     EXPECT_FALSE(py::cast<bool>(bbuf1.get_item(i)));
-//   }
-
-//   Buffer bbuf2(3, "bool", py::cast(1.0f));
-//   for (std::size_t i = 0; i < bbuf2.size(); ++i) {
-//     EXPECT_TRUE(py::cast<bool>(bbuf2.get_item(i)));
-//   }
-
-//   Buffer bbuf3(3, "bool", py::cast(0.1));
-//   for (std::size_t i = 0; i < bbuf3.size(); ++i) {
-//     EXPECT_TRUE(py::cast<bool>(bbuf3.get_item(i)));
-//   }
-
-//   Buffer bbuf4(3, "bool", py::cast(-1));
-//   for (std::size_t i = 0; i < bbuf4.size(); ++i) {
-//     EXPECT_TRUE(py::cast<bool>(bbuf4.get_item(i)));
-//   }
+//   Buffer a({1.0f, 2.0f, 3.0f}, "float32");
+//   Buffer b({4.0f, 5.0f, 6.0f}, "float32");
+//   Buffer c = simd_ops::(a, b, "float32");
+//   std::vector<float> expected = {5.0f, 7.0f, 9.0f};
+//   const auto &c_buf = std::get<VecBuffer<float>>(c.raw());
+//   for (size_t i = 0; i < expected.size(); ++i) {
+//     EXPECT_NEAR(c_buf[i], expected[i], 1e-6);
 // }
-
-// // Test for float16 buffer specifically
-// TEST(BufferTest, Float16Buffer) {
-//   py::scoped_interpreter guard{};
-
-//   Buffer f16buf(5, "float16");
-//   EXPECT_EQ(f16buf.get_dtype(), "float16");
-//   EXPECT_EQ(f16buf.size(), 5);
-
-//   // Test value initialization and conversion
-//   Buffer f16buf_val(3, "float16", py::cast(3.14159f));
-//   for (std::size_t i = 0; i < f16buf_val.size(); ++i) {
-//     // we need a larger epsilon, since precision float16 << float32
-//     float val = py::cast<float>(f16buf_val.get_item(i));
-//     EXPECT_NEAR(val, 3.14159f, 5e-3f); // Higher epsilon for float16
-//   }
-
-//   // Test limits of float16 (±65504)
-//   Buffer f16buf_max(1, "float16", py::cast(65504.0f));
-//   float max_val = py::cast<float>(f16buf_max.get_item(0));
-//   EXPECT_NEAR(max_val, 65504.0f, 1.0f);
-
-//   f16buf.set_item(0, 42.5);
-//   float read_val = py::cast<float>(f16buf.get_item(0));
-//   EXPECT_NEAR(read_val, 42.5f, 1e-2f);
 // }
 
 // TEST(BufferDeathTest, SetItemOutOfBounds) {

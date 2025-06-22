@@ -10,7 +10,21 @@ extra_compile_args = [
     "-O3" if not sys.platform == "win32" else "/O2",
     "-ffast-math" if not sys.platform == "win32" else "/fp:fast",
     "-DEIGEN_MAX_ALIGN_BYTES=64",
+    "-DNDEBUG",  # Disable debug assertions for performance
 ]
+
+# SIMD optimization flags
+if not sys.platform == "win32":
+    extra_compile_args += [
+        "-march=native",  # Use all available CPU features
+        "-mtune=native",  # Optimize for current CPU
+        "-funroll-loops",  # Unroll loops for better performance
+    ]
+    # Add specific SIMD instruction sets if available
+    if platform.machine() == "x86_64":
+        extra_compile_args += ["-mavx2", "-mfma", "-msse4.2"]
+else:
+    extra_compile_args += ["/arch:AVX2"]  # Enable AVX2 on Windows
 
 # Platform-specific compiler flags
 if sys.platform == "darwin":
@@ -22,7 +36,7 @@ if sys.platform == "darwin":
     if platform.machine() == "arm64":
         extra_compile_args += ["-mcpu=apple-m1", "-Wnan-infinity-disabled"]
 elif sys.platform == "win32":
-    extra_compile_args += ["/EHsc"]
+    extra_compile_args += ["/EHsc", "/permissive-"]
 else:
     extra_compile_args += ["-fPIC"]
     # Add architecture optimization
@@ -76,11 +90,27 @@ def get_include_dirs():
 ext_modules = [
     Extension(
         "grad.kernels.cpu_kernel",
-        ["./kernels/cpu_kernel.cpp", "./kernels/vecbuffer.cpp"],
+        [
+            "./kernels/cpu_kernel.cpp",
+            "./kernels/vecbuffer.cpp",
+        ],
         include_dirs=get_include_dirs(),
         language="c++",
         extra_compile_args=extra_compile_args,
+        extra_link_args=["-O3"] if not sys.platform == "win32" else [],
     ),
+    # Extension(
+    #     "grad.ops.operations",
+    #     [
+    #         "./kernels/cpu_kernel.cpp",
+    #         "./kernels/vecbuffer.cpp",
+    #         "./kernels/operations.cpp",
+    #     ],
+    #     include_dirs=get_include_dirs(),
+    #     language="c++",
+    #     extra_compile_args=extra_compile_args,
+    #     extra_link_args=["-O3"] if not sys.platform == "win32" else [],
+    # ),
 ]
 
 setup(

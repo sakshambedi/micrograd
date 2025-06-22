@@ -1,6 +1,7 @@
 // Copyright 2025 Saksham Bedi
 
 #include "cpu_kernel.h"
+
 #include <algorithm>
 #include <array>
 #include <iostream>
@@ -256,7 +257,4 @@ PYBIND11_MODULE(cpu_kernel, m) {
       .def("get_item", &Buffer::get_item)
       .def("cast", &Buffer::cast)
       .def_property_readonly("__array_interface__", &Buffer::array_interface);
-
-  // m.def("add", &add, py::arg("lhs"), py::arg("rhs"), py::arg("lhs_shape"),
-  //       py::arg("rhs_shape"), py::arg("out_shape"), py::arg("dtype"));
 }

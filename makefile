@@ -1,5 +1,12 @@
 .PHONY: test clean
 
+kill_docker:
+	osascript -e 'quit app "Docker"'
+
+
+docker:
+	open -a Docker
+	docker build -t micrograd:test .
 
 test:
 	python3 -m pytest tests/ -v

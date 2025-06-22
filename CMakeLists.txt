@@ -3,6 +3,17 @@ project(micrograd)
 
 set(CMAKE_CXX_STANDARD 17)
 
+# Enable SIMD optimizations
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -ffast-math -DNDEBUG")
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mtune=native")
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2 -mfma")
+    endif()
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX2")
+endif()
+
 # Set up vcpkg toolchain if not already set
 if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     if(EXISTS "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
@@ -68,7 +79,9 @@ endif()
 # Create a static library for testing
 add_library(cpu_kernel_lib STATIC
     kernels/cpu_kernel.cpp
-    kernels/vecbuffer.cpp)
+    kernels/vecbuffer.cpp
+    kernels/operations.h
+    kernels/operations.cpp)
 target_include_directories(cpu_kernel_lib PRIVATE
     ${PYTHON_INCLUDE_DIRS}
     ${pybind11_SOURCE_DIR}/include
@@ -76,7 +89,11 @@ target_include_directories(cpu_kernel_lib PRIVATE
 )
 
 # Create Python module
-pybind11_add_module(cpu_kernel kernels/cpu_kernel.cpp kernels/vecbuffer.cpp)
+pybind11_add_module(cpu_kernel
+    kernels/cpu_kernel.cpp
+    kernels/vecbuffer.cpp
+    kernels/operations.h
+    kernels/operations.cpp)
 target_include_directories(cpu_kernel PRIVATE
     ${PYTHON_INCLUDE_DIRS}
     ${XSIMD_INCLUDE_DIR}
@@ -91,4 +108,17 @@ FetchContent_MakeAvailable(googletest)
 
 # Enable testing
 enable_testing()
+
+# # Add SIMD operations test executable
+# add_executable(test_simd_ops test_simd_ops.cpp)
+# target_link_libraries(test_simd_ops PRIVATE cpu_kernel_lib)
+# target_include_directories(test_simd_ops PRIVATE
+#     ${PYTHON_INCLUDE_DIRS}
+#     ${pybind11_SOURCE_DIR}/include
+#     ${XSIMD_INCLUDE_DIR}
+# )
+
+# Add test to CTest
+# add_test(NAME simd_operations_test COMMAND test_simd_ops)
+
 add_subdirectory(tests/kernels)

@@ -3,13 +3,13 @@
 #ifndef KERNELS_CPU_KERNEL_H_
 #define KERNELS_CPU_KERNEL_H_
 
-#include "pybind11/pytypes.h"
 #include "vecbuffer.h"
 #include <Eigen/Core>
 #include <algorithm>
 #include <array>
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
+#include <pybind11/pytypes.h>
 #include <string>
 #include <unordered_map>
 #include <variant>
