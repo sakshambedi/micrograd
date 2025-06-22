@@ -63,31 +63,30 @@ struct DivOp {
 template <typename T, typename Op>
 void binary_kernel_aligned(const T *__restrict__ lhs, const T *__restrict__ rhs,
                            T *__restrict__ out, std::size_t n) noexcept {
-  // Special handling for half precision which doesn't support SIMD
+  // half precision doesn't have SIMD support yet
   if constexpr (std::is_same_v<T, half>) {
     for (std::size_t i = 0; i < n; ++i) {
       out[i] = Op::apply_scalar(lhs[i], rhs[i]);
     }
-    return;
-  }
+  } else {
+    using batch_type = xsimd::batch<T>;
+    constexpr std::size_t batch_size = batch_type::size;
 
-  using batch_type = xsimd::batch<T>;
-  constexpr std::size_t batch_size = batch_type::size;
+    std::size_t i = 0;
+    const std::size_t simd_end = batch_size > 0 ? n - (n % batch_size) : 0;
 
-  std::size_t i = 0;
-  const std::size_t simd_end = batch_size > 0 ? n - (n % batch_size) : 0;
+    // Main SIMD loop - assumes aligned memory
+    for (; i < simd_end; i += batch_size) {
+      auto a_batch = batch_type::load_aligned(&lhs[i]);
+      auto b_batch = batch_type::load_aligned(&rhs[i]);
+      auto result = Op::apply_simd(a_batch, b_batch);
+      result.store_aligned(&out[i]);
+    }
 
-  // Main SIMD loop - assumes aligned memory
-  for (; i < simd_end; i += batch_size) {
-    auto a_batch = batch_type::load_aligned(&lhs[i]);
-    auto b_batch = batch_type::load_aligned(&rhs[i]);
-    auto result = Op::apply_simd(a_batch, b_batch);
-    result.store_aligned(&out[i]);
-  }
-
-  // Handle remaining elements with scalar operations
-  for (; i < n; ++i) {
-    out[i] = Op::apply_scalar(lhs[i], rhs[i]);
+    // Handle remaining elements with scalar operations
+    for (; i < n; ++i) {
+      out[i] = Op::apply_scalar(lhs[i], rhs[i]);
+    }
   }
 }
 
@@ -101,41 +100,40 @@ void binary_kernel_unaligned(const T *__restrict__ lhs,
     for (std::size_t i = 0; i < n; ++i) {
       out[i] = Op::apply_scalar(lhs[i], rhs[i]);
     }
-    return;
-  }
+  } else {
+    using batch_type = xsimd::batch<T>;
+    constexpr std::size_t batch_size = batch_type::size;
 
-  using batch_type = xsimd::batch<T>;
-  constexpr std::size_t batch_size = batch_type::size;
+    std::size_t i = 0;
 
-  std::size_t i = 0;
+    // Align to the most restrictive pointer
+    const auto lhs_offset = align_offset<T>(lhs);
+    const auto rhs_offset = align_offset<T>(rhs);
+    const auto out_offset = align_offset<T>(out);
+    const auto max_offset = std::max({lhs_offset, rhs_offset, out_offset});
+    const auto align_count = std::min(max_offset, n);
 
-  // Align to the most restrictive pointer
-  const auto lhs_offset = align_offset<T>(lhs);
-  const auto rhs_offset = align_offset<T>(rhs);
-  const auto out_offset = align_offset<T>(out);
-  const auto max_offset = std::max({lhs_offset, rhs_offset, out_offset});
-  const auto align_count = std::min(max_offset, n);
+    // Handle initial unaligned elements with scalar operations
+    for (; i < align_count; ++i) {
+      out[i] = Op::apply_scalar(lhs[i], rhs[i]);
+    }
 
-  // Handle initial unaligned elements with scalar operations
-  for (; i < align_count; ++i) {
-    out[i] = Op::apply_scalar(lhs[i], rhs[i]);
-  }
+    // Main SIMD loop with aligned access
+    const std::size_t remaining = n - i;
+    const std::size_t simd_end =
+        i + (batch_size > 0 ? remaining - (remaining % batch_size) : 0);
 
-  // Main SIMD loop with aligned access
-  const std::size_t remaining = n - i;
-  const std::size_t simd_end =
-      i + (batch_size > 0 ? remaining - (remaining % batch_size) : 0);
+    for (; i < simd_end; i += batch_size) {
+      auto a_batch = batch_type::load_aligned(&lhs[i]);
+      auto b_batch = batch_type::load_aligned(&rhs[i]);
+      auto result = Op::apply_simd(a_batch, b_batch);
+      result.store_aligned(&out[i]);
+    }
 
-  for (; i < simd_end; i += batch_size) {
-    auto a_batch = batch_type::load_aligned(&lhs[i]);
-    auto b_batch = batch_type::load_aligned(&rhs[i]);
-    auto result = Op::apply_simd(a_batch, b_batch);
-    result.store_aligned(&out[i]);
-  }
-
-  // Handle remaining elements with scalar operations
-  for (; i < n; ++i) {
-    out[i] = Op::apply_scalar(lhs[i], rhs[i]);
+    // Handle remaining elements with scalar operations
+    for (; i < n; ++i) {
+      out[i] = Op::apply_scalar(lhs[i], rhs[i]);
+    }
   }
 }
 
@@ -148,23 +146,22 @@ void binary_kernel(const T *__restrict__ lhs, const T *__restrict__ rhs,
     for (std::size_t i = 0; i < n; ++i) {
       out[i] = Op::apply_scalar(lhs[i], rhs[i]);
     }
-    return;
-  }
-
-  // For small arrays, use scalar operations directly
-  constexpr std::size_t simd_threshold = xsimd::batch<T>::size * 4;
-  if (n < simd_threshold) {
-    for (std::size_t i = 0; i < n; ++i) {
-      out[i] = Op::apply_scalar(lhs[i], rhs[i]);
-    }
-    return;
-  }
-
-  // Check if all pointers are properly aligned
-  if (is_aligned<T>(lhs) && is_aligned<T>(rhs) && is_aligned<T>(out)) {
-    binary_kernel_aligned<T, Op>(lhs, rhs, out, n);
   } else {
-    binary_kernel_unaligned<T, Op>(lhs, rhs, out, n);
+    // For small arrays, use scalar operations directly
+    constexpr std::size_t simd_threshold = xsimd::batch<T>::size * 4;
+    if (n < simd_threshold) {
+      for (std::size_t i = 0; i < n; ++i) {
+        out[i] = Op::apply_scalar(lhs[i], rhs[i]);
+      }
+      return;
+    }
+
+    // Check if all pointers are properly aligned
+    if (is_aligned<T>(lhs) && is_aligned<T>(rhs) && is_aligned<T>(out)) {
+      binary_kernel_aligned<T, Op>(lhs, rhs, out, n);
+    } else {
+      binary_kernel_unaligned<T, Op>(lhs, rhs, out, n);
+    }
   }
 }
 
