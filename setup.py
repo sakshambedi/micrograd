@@ -16,8 +16,6 @@ extra_compile_args = [
 # SIMD optimization flags
 if not sys.platform == "win32":
     extra_compile_args += [
-        "-march=native",  # Use all available CPU features
-        "-mtune=native",  # Optimize for current CPU
         "-funroll-loops",  # Unroll loops for better performance
     ]
     # Add specific SIMD instruction sets if available
@@ -34,11 +32,18 @@ if sys.platform == "darwin":
     ]
     # Add Apple Silicon specific flags if on M1/M2
     if platform.machine() == "arm64":
-        extra_compile_args += ["-mcpu=apple-m1", "-Wnan-infinity-disabled"]
+        extra_compile_args += [
+            "-mcpu=apple-m1",
+            # "-Wnan-infinity-disabled"
+        ]
 elif sys.platform == "win32":
     extra_compile_args += ["/EHsc", "/permissive-"]
 else:
-    extra_compile_args += ["-fPIC"]
+    extra_compile_args += [
+        "-fPIC",
+        "-march=native",  # Use all available CPU features
+        "-mtune=native",  # Optimize for current CPU
+    ]
     # Add architecture optimization
     if platform.machine() == "x86_64":
         extra_compile_args += ["-march=x86-64"]

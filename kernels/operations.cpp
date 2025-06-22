@@ -6,7 +6,6 @@
 
 namespace simd_ops {
 
-// Operation functors for compile-time polymorphism
 struct AddOp {
   template <typename T> static constexpr T apply_scalar(T a, T b) noexcept {
     return a + b;
@@ -90,7 +89,7 @@ void binary_kernel_aligned(const T *__restrict__ lhs, const T *__restrict__ rhs,
   }
 }
 
-// SIMD binary operation kernel with automatic alignment handling
+// SIMD binary operation kernel with unaligned memory handling
 template <typename T, typename Op>
 void binary_kernel_unaligned(const T *__restrict__ lhs,
                              const T *__restrict__ rhs, T *__restrict__ out,
@@ -104,30 +103,16 @@ void binary_kernel_unaligned(const T *__restrict__ lhs,
     using batch_type = xsimd::batch<T>;
     constexpr std::size_t batch_size = batch_type::size;
 
+    // Process elements in SIMD-sized chunks using unaligned loads/stores
     std::size_t i = 0;
+    const std::size_t simd_end = batch_size > 0 ? n - (n % batch_size) : 0;
 
-    // Align to the most restrictive pointer
-    const auto lhs_offset = align_offset<T>(lhs);
-    const auto rhs_offset = align_offset<T>(rhs);
-    const auto out_offset = align_offset<T>(out);
-    const auto max_offset = std::max({lhs_offset, rhs_offset, out_offset});
-    const auto align_count = std::min(max_offset, n);
-
-    // Handle initial unaligned elements with scalar operations
-    for (; i < align_count; ++i) {
-      out[i] = Op::apply_scalar(lhs[i], rhs[i]);
-    }
-
-    // Main SIMD loop with aligned access
-    const std::size_t remaining = n - i;
-    const std::size_t simd_end =
-        i + (batch_size > 0 ? remaining - (remaining % batch_size) : 0);
-
+    // Main SIMD loop with unaligned memory access
     for (; i < simd_end; i += batch_size) {
-      auto a_batch = batch_type::load_aligned(&lhs[i]);
-      auto b_batch = batch_type::load_aligned(&rhs[i]);
+      auto a_batch = batch_type::load_unaligned(&lhs[i]);
+      auto b_batch = batch_type::load_unaligned(&rhs[i]);
       auto result = Op::apply_simd(a_batch, b_batch);
-      result.store_aligned(&out[i]);
+      result.store_unaligned(&out[i]);
     }
 
     // Handle remaining elements with scalar operations
@@ -179,8 +164,7 @@ Buffer buffer_add(const Buffer &a, const Buffer &b,
       [&](auto &out_buf) {
         using T = std::decay_t<decltype(out_buf[0])>;
 
-        // Always use the add function - we'll handle half specially in the add
-        // implementation
+        // Always use the add function
         auto &a_buf = std::get<VecBuffer<T>>(a_cast.raw());
         auto &b_buf = std::get<VecBuffer<T>>(b_cast.raw());
         add(a_buf.data(), b_buf.data(), out_buf.data(), a_cast.size());

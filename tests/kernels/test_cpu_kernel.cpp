@@ -753,18 +753,18 @@ TEST(CastBufferTest, ComprehensiveTypeConversionGrid) {
   }
 }
 
-// TEST(BufferTest, AddOperation) {
-//   py::scoped_interpreter guard{};
+TEST(BufferTest, AddOperation) {
+  py::scoped_interpreter guard{};
 
-//   Buffer a({1.0f, 2.0f, 3.0f}, "float32");
-//   Buffer b({4.0f, 5.0f, 6.0f}, "float32");
-//   Buffer c = simd_ops::(a, b, "float32");
-//   std::vector<float> expected = {5.0f, 7.0f, 9.0f};
-//   const auto &c_buf = std::get<VecBuffer<float>>(c.raw());
-//   for (size_t i = 0; i < expected.size(); ++i) {
-//     EXPECT_NEAR(c_buf[i], expected[i], 1e-6);
-// }
-// }
+  Buffer a({1.0f, 2.0f, 3.0f}, "float32");
+  Buffer b({4.0f, 5.0f, 6.0f}, "float32");
+  Buffer c = simd_ops::buffer_add(a, b, "float32");
+  std::vector<float> expected = {5.0f, 7.0f, 9.0f};
+  const auto &c_buf = std::get<VecBuffer<float>>(c.raw());
+  for (size_t i = 0; i < expected.size(); ++i) {
+    EXPECT_NEAR(c_buf[i], expected[i], 1e-6);
+  }
+}
 
 // TEST(BufferDeathTest, SetItemOutOfBounds) {
 //   Buffer buf(1, "float32");

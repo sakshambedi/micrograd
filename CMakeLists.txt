@@ -3,8 +3,11 @@ project(micrograd)
 
 set(CMAKE_CXX_STANDARD 17)
 
-# Enable SIMD optimizations
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -ffast-math -DNDEBUG")
+# Enable SIMD optimizations while maintaining IEEE 754 compliance
+set(CMAKE_CXX_FLAGS_RELEASE
+    "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
+# Use targeted optimizations that preserve NaN and Infinity behaviors
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-math-errno -freciprocal-math")
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mtune=native")
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
@@ -23,11 +26,15 @@ if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     elseif(WIN32 AND EXISTS "C:/vcpkg/scripts/buildsystems/vcpkg.cmake")
         set(CMAKE_TOOLCHAIN_FILE "C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
             CACHE STRING "Vcpkg toolchain file")
-    elseif(UNIX AND NOT APPLE AND EXISTS "/usr/local/vcpkg/scripts/buildsystems/vcpkg.cmake")
-        set(CMAKE_TOOLCHAIN_FILE "/usr/local/vcpkg/scripts/buildsystems/vcpkg.cmake"
-            CACHE STRING "Vcpkg toolchain file")
-    elseif(APPLE AND EXISTS "/Users/${USER}/vcpkg/scripts/buildsystems/vcpkg.cmake")
-        set(CMAKE_TOOLCHAIN_FILE "/Users/${USER}/vcpkg/scripts/buildsystems/vcpkg.cmake"
+    elseif(UNIX AND NOT APPLE AND EXISTS
+           "/usr/local/vcpkg/scripts/buildsystems/vcpkg.cmake")
+        set(CMAKE_TOOLCHAIN_FILE
+            "/usr/local/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING
+            "Vcpkg toolchain file")
+    elseif(APPLE AND EXISTS
+    "/Users/${USER}/vcpkg/scripts/buildsystems/vcpkg.cmake")
+        set(CMAKE_TOOLCHAIN_FILE
+            "/Users/${USER}/vcpkg/scripts/buildsystems/vcpkg.cmake"
             CACHE STRING "Vcpkg toolchain file")
     endif()
 endif()
@@ -108,17 +115,4 @@ FetchContent_MakeAvailable(googletest)
 
 # Enable testing
 enable_testing()
-
-# # Add SIMD operations test executable
-# add_executable(test_simd_ops test_simd_ops.cpp)
-# target_link_libraries(test_simd_ops PRIVATE cpu_kernel_lib)
-# target_include_directories(test_simd_ops PRIVATE
-#     ${PYTHON_INCLUDE_DIRS}
-#     ${pybind11_SOURCE_DIR}/include
-#     ${XSIMD_INCLUDE_DIR}
-# )
-
-# Add test to CTest
-# add_test(NAME simd_operations_test COMMAND test_simd_ops)
-
 add_subdirectory(tests/kernels)
