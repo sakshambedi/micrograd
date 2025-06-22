@@ -7,29 +7,33 @@ target_include_directories(test_cpu_kernel PRIVATE
                             ${XSIMD_INCLUDE_DIR})
 target_link_libraries(test_cpu_kernel gtest_main
                     cpu_kernel_lib ${Python3_LIBRARIES})
+# Ensure IEEE 754 compliance in tests
+target_compile_options(test_cpu_kernel PRIVATE -fno-fast-math)
 gtest_discover_tests(test_cpu_kernel)
 
-# Build test_buff_elementwise Tests
-# add_executable(test_buffer_elementwise test_buffer_elementwise.cpp)
-# target_include_directories(test_buffer_elementwise PRIVATE
+# Build Binary Operations tests
+add_executable(test_binary_operations test_binary_operations.cpp)
+target_include_directories(test_binary_operations PRIVATE
+                            ${pybind11_SOURCE_DIR}/include
+                            ${Python3_INCLUDE_DIRS}
+                            ${XSIMD_INCLUDE_DIR})
+target_link_libraries(test_binary_operations gtest_main
+                    cpu_kernel_lib ${Python3_LIBRARIES})
+# Ensure IEEE 754 compliance in tests
+target_compile_options(test_binary_operations PRIVATE -fno-fast-math)
+gtest_discover_tests(test_binary_operations)
+
+# Build Elementwise Add tests
+# add_executable(test_elementwise_add test_elementwise_add.cpp)
+# target_include_directories(test_elementwise_add PRIVATE
 #                             ${pybind11_SOURCE_DIR}/include
 #                             ${Python3_INCLUDE_DIRS}
 #                             ${XSIMD_INCLUDE_DIR})
-# target_link_libraries(test_buffer_elementwise gtest_main
+# target_link_libraries(test_elementwise_add gtest_main
 #                     cpu_kernel_lib ${Python3_LIBRARIES})
-# gtest_discover_tests(test_buffer_elementwise)
-
-
-# Build VecBuffer Arthimethic Tests
-# add_executable(test_vecbuffer_arithmetic test_vecbuffer_arithmetic.cpp)
-# target_include_directories(test_vecbuffer_arithmetic PRIVATE
-#                             ${pybind11_SOURCE_DIR}/include
-#                             ${Python3_INCLUDE_DIRS}
-#                             ${XSIMD_INCLUDE_DIR})
-# target_link_libraries(test_vecbuffer_arithmetic gtest_main
-#                     cpu_kernel_lib ${Python3_LIBRARIES})
-# gtest_discover_tests(test_vecbuffer_arithmetic)
-
+# # Ensure IEEE 754 compliance in tests
+# target_compile_options(test_elementwise_add PRIVATE -fno-fast-math)
+# gtest_discover_tests(test_elementwise_add)
 
 # Build VecBuffer tests
 add_executable(test_vecbuffer test_vecbuffer.cpp)
@@ -39,6 +43,8 @@ target_include_directories(test_vecbuffer PRIVATE
                             ${XSIMD_INCLUDE_DIR})
 target_link_libraries(test_vecbuffer gtest_main
                     cpu_kernel_lib ${Python3_LIBRARIES})
+# Ensure IEEE 754 compliance in tests
+target_compile_options(test_vecbuffer PRIVATE -fno-fast-math)
 gtest_discover_tests(test_vecbuffer)
 
 # Build DTypeEnum tests
@@ -49,4 +55,6 @@ target_include_directories(test_dtype_enum PRIVATE
                         ${XSIMD_INCLUDE_DIR})
 target_link_libraries(test_dtype_enum gtest_main
                     cpu_kernel_lib ${Python3_LIBRARIES})
+# Ensure IEEE 754 compliance in tests
+target_compile_options(test_dtype_enum PRIVATE -fno-fast-math)
 gtest_discover_tests(test_dtype_enum)
