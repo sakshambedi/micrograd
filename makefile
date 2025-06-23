@@ -1,10 +1,14 @@
 # MicroGrad Makefile
 # Provides convenient targets for building and testing the C++ kernel
+.PHONY: help build clean test install-deps debug release install uninstall setup-env
 
-.PHONY: help build clean test install-deps debug release install uninstall
 
-# Default target
 .DEFAULT_GOAL := help
+
+
+ifeq ($(PLATFORM),unix)
+$(shell chmod +x ./setup_prerequisite.sh 2>/dev/null || true)
+endif
 
 # Variables
 BUILD_DIR := build
@@ -32,7 +36,7 @@ else
 endif
 
 # Help target
-help: ## Show this help message
+help:
 	@echo "MicroGrad C++ Kernel Build System"
 	@echo "=================================="
 	@echo ""
@@ -40,12 +44,13 @@ help: ## Show this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 	@echo ""
 	@echo "Examples:"
+	@echo "  make setup-env      # Set up development environment (install all prerequisites)"
 	@echo "  make build          # Build in Release mode"
 	@echo "  make debug          # Build in Debug mode"
 	@echo "  make test           # Build and run tests"
 	@echo "  make clean          # Clean build directory"
 
-# Build targets
+
 build: ## Build the project in Release mode
 	@echo "Building in Release mode..."
 	@mkdir -p $(BUILD_DIR)
@@ -63,7 +68,7 @@ debug: ## Build the project in Debug mode
 release: build
 
 # Test targets
-test: build ## Build and run tests
+test: build
 	@echo "Running tests..."
 	@cd $(BUILD_DIR) && (ctest --output-on-failure || $(CMAKE) --build . --target test || echo "Warning: Some tests may have failed")
 	@echo "Tests completed!"
@@ -73,24 +78,26 @@ test-debug: debug ## Build in debug mode and run tests
 	@cd $(BUILD_DIR) && (ctest --output-on-failure || $(CMAKE) --build . --target test || echo "Warning: Some tests may have failed")
 	@echo "Tests completed!"
 
-# Clean targets
-clean: ## Clean build directory
+
+clean:
 	@echo "Cleaning build directory..."
 	@rm -rf $(BUILD_DIR)
 	@echo "Clean completed!"
 
-# Development targets
-dev: debug test-debug ## Build in debug mode and run tests (for development)
 
-# Install targets
+dev: debug test-debug
+
+
 install-deps: ## Install dependencies using vcpkg
 	@echo "Installing dependencies..."
-	@if ! command -v vcpkg >/dev/null 2>&1; then \
-		echo "Error: vcpkg is required but not found. Please install vcpkg first."; \
-		echo "Visit: https://github.com/microsoft/vcpkg#quick-start-windows"; \
-		exit 1; \
+	@if [ "$(OS)" = "Windows_NT" ]; then \
+		echo "Running Windows setup script..."; \
+		./setup_prerequisite.bat; \
+	else \
+		echo "Running Unix setup script..."; \
+		chmod +x ./setup_prerequisite.sh; \
+		./setup_prerequisite.sh; \
 	fi
-	vcpkg install eigen3 xsimd pybind11
 	@echo "Dependencies installed successfully!"
 
 install: build ## Install the Python module
@@ -107,14 +114,21 @@ uninstall: ## Uninstall the Python module
 	@$(PYTHON) -m pip uninstall -y micrograd
 	@echo "Uninstallation completed!"
 
-# Utility targets
+
 check: ## Check if all dependencies are available
 	@echo "Checking dependencies..."
 	@echo "Python: $(shell which $(PYTHON))"
 	@echo "CMake: $(shell which $(CMAKE))"
 	@echo "Make: $(shell which $(MAKE))"
 	@echo "Platform: $(PLATFORM)"
-	@echo "All dependencies found!"
+	@if command -v vcpkg >/dev/null 2>&1; then \
+		echo "vcpkg: $(shell which vcpkg)"; \
+		echo "vcpkg libraries:"; \
+		vcpkg list; \
+	else \
+		echo "vcpkg: Not found"; \
+	fi
+	@echo "All dependencies checked!"
 
 format: ## Format C++ code (requires clang-format)
 	@echo "Formatting C++ code..."
@@ -137,6 +151,13 @@ artifacts: ## Show build artifacts
 	@echo "Build artifacts in $(BUILD_DIR):"
 	@find $(BUILD_DIR) -name "*.$(SO_EXT)" -o -name "*.so" -o -name "*.dylib" -o -name "*.dll" 2>/dev/null | xargs ls -la 2>/dev/null || echo "No shared libraries found"
 	@find $(BUILD_DIR) -name "test_*" 2>/dev/null | xargs ls -la 2>/dev/null || echo "No test executables found"
+
+# Full environment setup
+setup-env: ## Set up the complete development environment
+	@echo "Setting up development environment..."
+	@$(MAKE) install-deps
+	@$(MAKE) check
+	@echo "Development environment setup complete!"
 
 # Python module test
 python-test: build ## Test the Python module

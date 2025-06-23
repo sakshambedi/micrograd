@@ -408,7 +408,7 @@ TEST_F(BinaryOperationsTest, AddWithHalfPrecision) {
   for (size_t i = 0; i < size; i++) {
     float expected =
         static_cast<float>(i) / 10.0f + static_cast<float>(i) / 5.0f;
-    float actual = static_cast<float>(result[i]);
+    auto actual = static_cast<float>(result[i]);
     EXPECT_NEAR(actual, expected, 0.02f); // Higher tolerance for half precision
   }
 }
@@ -770,8 +770,7 @@ TEST_F(BinaryOperationsTest, DivideWithMisalignment) {
 
   std::vector<float> base_a =
       generateRandomData<float>(size + 8, -100.0f, 100.0f);
-  std::vector<float> base_b =
-      generateRandomData<float>(size + 8, 0.1f, 100.0f);
+  std::vector<float> base_b = generateRandomData<float>(size + 8, 0.1f, 100.0f);
   std::vector<float> base_result(size + 8);
 
   for (size_t offset_a : offsets) {

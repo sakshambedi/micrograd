@@ -3,12 +3,17 @@
 #include "../../kernels/cpu_kernel.h"
 #include "../../kernels/operations.h"
 #include <cassert>
+#include <cstdint>
+#include <cstdlib>
 #include <gtest/gtest.h>
 #include <iostream>
 #include <limits>
 #include <pybind11/embed.h>
 #include <pybind11/numpy.h>
+#include <stdexcept>
+#include <string>
 #include <vector>
+
 namespace py = pybind11;
 TEST(BufferTest, ConstructorAndSize) {
   py::scoped_interpreter guard{};
@@ -169,46 +174,6 @@ TEST(BufferTest, ConstructorExceptions) {
   EXPECT_THROW(Buffer(5, "invalid_type"), std::runtime_error);
   EXPECT_THROW(Buffer({1, 2, 3}, "float128"), std::runtime_error);
 }
-
-// // Test buffer initialization with same value across different dtypes
-// TEST(BufferTest, InitializeWithValue) {
-//   py::scoped_interpreter guard{};
-//
-//   // Float buffers with same value
-//   Buffer f32buf(5, "float32", py::cast(3.14f));
-//   for (std::size_t i = 0; i < f32buf.size(); ++i) {
-//     EXPECT_NEAR(py::cast<float>(f32buf.get_item(i)), 3.14f, 1e-6f);
-//   }
-//
-//   Buffer f64buf(3, "float64", py::cast(2.71828));
-//   for (std::size_t i = 0; i < f64buf.size(); ++i) {
-//     EXPECT_NEAR(py::cast<double>(f64buf.get_item(i)), 2.71828, 1e-9);
-//   }
-//
-//   // float16 buffer test
-//   Buffer f16buf(4, "float16", py::cast(1.5f));
-//   for (std::size_t i = 0; i < f16buf.size(); ++i) {
-//     EXPECT_NEAR(py::cast<float>(f16buf.get_item(i)), 1.5f, 1e-3f);
-//   }
-//
-//   // Integer buffers with same value
-//   Buffer i32buf(4, "int32", py::cast(42));
-//   for (std::size_t i = 0; i < i32buf.size(); ++i) {
-//     EXPECT_EQ(py::cast<int>(i32buf.get_item(i)), 42);
-//   }
-//
-//   // Use a large negative int64_t value that can be reliably represented
-//   int64_t large_neg_value = -9223372036854775800LL;
-//   Buffer i64buf(4, "int64", py::cast(large_neg_value));
-//   for (std::size_t i = 0; i < i64buf.size(); ++i) {
-//     EXPECT_EQ(py::cast<int64_t>(i64buf.get_item(i)), large_neg_value);
-//   }
-//
-//   Buffer u8buf(3, "uint8", py::cast(uint8_t(255)));
-//   for (std::size_t i = 0; i < u8buf.size(); ++i) {
-//     EXPECT_EQ(py::cast<uint8_t>(u8buf.get_item(i)), uint8_t(255));
-//   }
-// }
 
 // Out-of-bounds accesses should throw an exception
 TEST(BufferTest, GetItemOutOfBounds) {
@@ -765,27 +730,140 @@ TEST(BufferTest, AddOperation) {
   }
 }
 
-// TEST(BufferDeathTest, SetItemOutOfBounds) {
-//   Buffer buf(1, "float32");
-//   EXPECT_DEATH({ buf.set_item(3, 1.0); }, "index");
-// }
+TEST(AlignmentTest, FloatAlignment) {
+  using T = float;
+  const std::size_t alignment = simd_ops::simd_alignment<T>();
+  T *ptr = static_cast<T *>(std::aligned_alloc(alignment, alignment * 2));
+  ASSERT_NE(ptr, nullptr);
 
-// // Validate type conversions and data preservation
-// TEST(BufferTest, TypeConversions) {
-//   py::scoped_interpreter guard{};
+  EXPECT_TRUE(simd_ops::is_aligned<T>(ptr));
+  EXPECT_EQ(simd_ops::align_offset<T>(ptr), 0U);
 
-//   Buffer dbuf(1, "float64");
-//   dbuf.set_item(0, 3.14159);
-//   EXPECT_NEAR(py::cast<double>(dbuf.get_item(0)), 3.14159, 1e-9);
+  char *mis_bytes = reinterpret_cast<char *>(ptr) + 1;
+  T *mis_ptr = reinterpret_cast<T *>(mis_bytes);
+  EXPECT_FALSE(simd_ops::is_aligned<T>(mis_ptr));
 
-//   Buffer ibuf(1, "int64");
-//   ibuf.set_item(0, -5);
-//   EXPECT_EQ(py::cast<int64_t>(ibuf.get_item(0)), -5);
+  auto addr = reinterpret_cast<std::uintptr_t>(mis_ptr);
+  std::size_t expected = alignment - (addr % alignment);
+  if (expected == alignment)
+    expected = 0;
+  expected /= sizeof(T);
+  EXPECT_EQ(simd_ops::align_offset<T>(mis_ptr), expected);
 
-//   Buffer fbuf(1, "float32");
-//   fbuf.set_item(0, 42);
-//   EXPECT_NEAR(py::cast<float>(fbuf.get_item(0)), 42.0f, 1e-6f);
+  std::free(ptr);
+}
 
-//   fbuf.set_item(0, 5.5);
-//   EXPECT_NEAR(py::cast<float>(fbuf.get_item(0)), 5.5f, 1e-6f);
-// }
+TEST(AlignmentTest, Int32Alignment) {
+  using T = int32_t;
+  const std::size_t alignment = simd_ops::simd_alignment<T>();
+  T *ptr = static_cast<T *>(std::aligned_alloc(alignment, alignment * 2));
+  ASSERT_NE(ptr, nullptr);
+
+  EXPECT_TRUE(simd_ops::is_aligned<T>(ptr));
+  EXPECT_EQ(simd_ops::align_offset<T>(ptr), 0U);
+
+  char *mis_bytes = reinterpret_cast<char *>(ptr) + 1;
+  T *mis_ptr = reinterpret_cast<T *>(mis_bytes);
+  EXPECT_FALSE(simd_ops::is_aligned<T>(mis_ptr));
+
+  auto addr = reinterpret_cast<std::uintptr_t>(mis_ptr);
+  std::size_t expected = alignment - (addr % alignment);
+  if (expected == alignment)
+    expected = 0;
+  expected /= sizeof(T);
+  EXPECT_EQ(simd_ops::align_offset<T>(mis_ptr), expected);
+
+  std::free(ptr);
+}
+
+TEST(AlignmentTest, SimdWidthAndBytes) {
+  EXPECT_EQ(simd_ops::simd_width<float>(), xsimd::batch<float>::size);
+  EXPECT_EQ(simd_ops::simd_bytes<float>(),
+            xsimd::batch<float>::size * sizeof(float));
+
+  EXPECT_EQ(simd_ops::simd_width<int32_t>(), xsimd::batch<int32_t>::size);
+  EXPECT_EQ(simd_ops::simd_bytes<int32_t>(),
+            xsimd::batch<int32_t>::size * sizeof(int32_t));
+}
+
+TEST(BufferMembersTest, RoundTripAndBounds) {
+  py::scoped_interpreter guard{};
+
+  Buffer fbuf(2, "float32");
+  fbuf.set_item<float>(0, 1.25f);
+  fbuf.set_item<float>(1, -2.5f);
+  auto item0 = fbuf.get_item(0);
+  auto item1 = fbuf.get_item(1);
+  EXPECT_FLOAT_EQ(py::cast<float>(item0), 1.25f);
+  EXPECT_FLOAT_EQ(py::cast<float>(item1), -2.5f);
+
+  // EXPECT_THROW(fbuf.get_item(2), std::out_of_range);
+  EXPECT_THROW(static_cast<void>(fbuf.set_item<float>(2, 0.f)),
+               std::out_of_range);
+  EXPECT_THROW(fbuf.set_item<float>(2, 0.f), std::out_of_range);
+
+  Buffer ibuf(1, "int32");
+  ibuf.set_item<int32_t>(0, 42);
+  auto item = ibuf.get_item(0);
+  EXPECT_EQ(py::cast<int32_t>(item), 42);
+}
+
+TEST(BufferMembersTest, ReprContainsInfo) {
+  py::scoped_interpreter guard{};
+  Buffer buf(3, "int64");
+  std::string r = buf.repr();
+  EXPECT_NE(r.find("dtype=int64"), std::string::npos);
+  EXPECT_NE(r.find("size=3"), std::string::npos);
+}
+
+TEST(BufferMembersTest, ArrayInterfaceBasics) {
+  py::scoped_interpreter guard{};
+  Buffer buf(5, "float32");
+  auto ai = buf.array_interface();
+  EXPECT_EQ(ai["shape"].cast<py::tuple>()[0].cast<std::size_t>(), 5);
+  EXPECT_EQ(ai["typestr"].cast<std::string>(), "<f4");
+
+  Buffer ibuf(2, "int32");
+  auto ai2 = ibuf.array_interface();
+  EXPECT_EQ(ai2["typestr"].cast<std::string>(), "<i4");
+}
+
+TEST(BufferMembersTest, CastBetweenTypes) {
+  py::scoped_interpreter guard{};
+  Buffer fbuf({1.5f, -2.0f}, "float32");
+  Buffer ibuf = fbuf.cast("int32");
+  EXPECT_EQ(py::cast<int32_t>(ibuf.get_item(0)), static_cast<int32_t>(1.5f));
+  EXPECT_EQ(py::cast<int32_t>(ibuf.get_item(1)), static_cast<int32_t>(-2.0f));
+
+  Buffer i64buf({1, 2, 3}, "int64");
+  Buffer f64buf = i64buf.cast("float64");
+  EXPECT_DOUBLE_EQ(py::cast<double>(f64buf.get_item(0)), 1.0);
+  EXPECT_DOUBLE_EQ(py::cast<double>(f64buf.get_item(1)), 2.0);
+  EXPECT_DOUBLE_EQ(py::cast<double>(f64buf.get_item(2)), 3.0);
+}
+
+TEST(BufferTest, SetItemOutOfBounds) {
+  py::scoped_interpreter guard{};
+  Buffer buf(1, "float32");
+  EXPECT_THROW(buf.set_item(3, 1.0), std::out_of_range);
+}
+
+// Validate type conversions and data preservation
+TEST(BufferTest, TypeConversions) {
+  py::scoped_interpreter guard{};
+
+  Buffer dbuf(1, "float64");
+  dbuf.set_item(0, 3.14159);
+  EXPECT_NEAR(py::cast<double>(dbuf.get_item(0)), 3.14159, 1e-9);
+
+  Buffer ibuf(1, "int64");
+  ibuf.set_item(0, -5);
+  EXPECT_EQ(py::cast<int64_t>(ibuf.get_item(0)), -5);
+
+  Buffer fbuf(1, "float32");
+  fbuf.set_item(0, 42);
+  EXPECT_NEAR(py::cast<float>(fbuf.get_item(0)), 42.0f, 1e-6f);
+
+  fbuf.set_item(0, 5.5);
+  EXPECT_NEAR(py::cast<float>(fbuf.get_item(0)), 5.5f, 1e-6f);
+}

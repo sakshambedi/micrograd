@@ -97,9 +97,7 @@ private:
   DType dtype_;
 };
 
-
-template <typename T>
-inline void Buffer::set_item(size_t index, T value) {
+template <typename T> inline void Buffer::set_item(size_t index, T value) {
   if (index >= size()) {
     throw std::out_of_range("Buffer index out of range");
   }
@@ -120,6 +118,5 @@ inline void Buffer::set_item(size_t index, T value) {
 
 // No external cast_buffer function needed, VecBuffer has built-in cast
 // functionality
-
 
 #endif // KERNELS_CPU_KERNEL_H_
