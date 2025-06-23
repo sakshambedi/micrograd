@@ -469,6 +469,24 @@ TEST_F(BinaryOperationsTest, SubtractAllTypes) {
     verifySubtraction(a, b, result);
   }
 
+  // uint8_t
+  {
+    auto a = generateRandomData<uint8_t>(size, 0, 100);
+    auto b = generateRandomData<uint8_t>(size, 0, 100);
+    std::vector<uint8_t> r(size);
+    simd_ops::subtract(a.data(), b.data(), r.data(), size);
+    verifySubtraction(a, b, r);
+  }
+
+  // int16_t
+  {
+    auto a = generateRandomData<int16_t>(size, -500, 500);
+    auto b = generateRandomData<int16_t>(size, -500, 500);
+    std::vector<int16_t> r(size);
+    simd_ops::subtract(a.data(), b.data(), r.data(), size);
+    verifySubtraction(a, b, r);
+  }
+
   // int32_t
   {
     std::vector<int32_t> a = generateRandomData<int32_t>(size, -100, 100);
@@ -487,6 +505,45 @@ TEST_F(BinaryOperationsTest, SubtractAllTypes) {
 
     simd_ops::subtract(a.data(), b.data(), result.data(), size);
     verifySubtraction(a, b, result);
+  }
+}
+
+// Test subtraction with misaligned pointers
+TEST_F(BinaryOperationsTest, SubtractWithMisalignment) {
+  const size_t size = 1000;
+  const size_t offsets[] = {1, 2, 3, 4, 7};
+
+  std::vector<float> base_a =
+      generateRandomData<float>(size + 8, -100.0f, 100.0f);
+  std::vector<float> base_b =
+      generateRandomData<float>(size + 8, -100.0f, 100.0f);
+  std::vector<float> base_result(size + 8);
+
+  for (size_t offset_a : offsets) {
+    for (size_t offset_b : offsets) {
+      for (size_t offset_result : offsets) {
+        float *a_ptr = base_a.data() + offset_a;
+        float *b_ptr = base_b.data() + offset_b;
+        float *result_ptr = base_result.data() + offset_result;
+
+        std::vector<float> a_data(size);
+        std::vector<float> b_data(size);
+
+        for (size_t i = 0; i < size; i++) {
+          a_data[i] = a_ptr[i];
+          b_data[i] = b_ptr[i];
+        }
+
+        simd_ops::subtract(a_ptr, b_ptr, result_ptr, size);
+
+        std::vector<float> result_data(size);
+        for (size_t i = 0; i < size; i++) {
+          result_data[i] = result_ptr[i];
+        }
+
+        verifySubtraction(a_data, b_data, result_data);
+      }
+    }
   }
 }
 
@@ -587,6 +644,68 @@ TEST_F(BinaryOperationsTest, MultiplyEdgeCases) {
   }
 }
 
+// Test multiplication with integer types
+TEST_F(BinaryOperationsTest, MultiplyIntegerTypes) {
+  const size_t size = 64;
+
+  // uint8_t
+  {
+    auto a = generateRandomData<uint8_t>(size, 0, 20);
+    auto b = generateRandomData<uint8_t>(size, 0, 20);
+    std::vector<uint8_t> r(size);
+    simd_ops::multiply(a.data(), b.data(), r.data(), size);
+    verifyMultiplication(a, b, r);
+  }
+
+  // int16_t
+  {
+    auto a = generateRandomData<int16_t>(size, -100, 100);
+    auto b = generateRandomData<int16_t>(size, -100, 100);
+    std::vector<int16_t> r(size);
+    simd_ops::multiply(a.data(), b.data(), r.data(), size);
+    verifyMultiplication(a, b, r);
+  }
+}
+
+// Test multiplication with misaligned pointers
+TEST_F(BinaryOperationsTest, MultiplyWithMisalignment) {
+  const size_t size = 1000;
+  const size_t offsets[] = {1, 2, 3, 4, 7};
+
+  std::vector<float> base_a =
+      generateRandomData<float>(size + 8, -100.0f, 100.0f);
+  std::vector<float> base_b =
+      generateRandomData<float>(size + 8, -100.0f, 100.0f);
+  std::vector<float> base_result(size + 8);
+
+  for (size_t offset_a : offsets) {
+    for (size_t offset_b : offsets) {
+      for (size_t offset_result : offsets) {
+        float *a_ptr = base_a.data() + offset_a;
+        float *b_ptr = base_b.data() + offset_b;
+        float *result_ptr = base_result.data() + offset_result;
+
+        std::vector<float> a_data(size);
+        std::vector<float> b_data(size);
+
+        for (size_t i = 0; i < size; i++) {
+          a_data[i] = a_ptr[i];
+          b_data[i] = b_ptr[i];
+        }
+
+        simd_ops::multiply(a_ptr, b_ptr, result_ptr, size);
+
+        std::vector<float> result_data(size);
+        for (size_t i = 0; i < size; i++) {
+          result_data[i] = result_ptr[i];
+        }
+
+        verifyMultiplication(a_data, b_data, result_data);
+      }
+    }
+  }
+}
+
 //------------------------------------------------------------------------------
 // Division Tests
 //------------------------------------------------------------------------------
@@ -618,6 +737,68 @@ TEST_F(BinaryOperationsTest, DivideVaryingSizes) {
     simd_ops::divide(a.data(), b.data(), result.data(), size);
 
     verifyDivision(a, b, result);
+  }
+}
+
+// Test division with integer types
+TEST_F(BinaryOperationsTest, DivideIntegerTypes) {
+  const size_t size = 64;
+
+  // uint8_t
+  {
+    auto a = generateRandomData<uint8_t>(size, 1, 10);
+    auto b = generateRandomData<uint8_t>(size, 1, 10);
+    std::vector<uint8_t> r(size);
+    simd_ops::divide(a.data(), b.data(), r.data(), size);
+    verifyDivision(a, b, r);
+  }
+
+  // int16_t
+  {
+    auto a = generateRandomData<int16_t>(size, -100, 100);
+    auto b = generateRandomData<int16_t>(size, 1, 100);
+    std::vector<int16_t> r(size);
+    simd_ops::divide(a.data(), b.data(), r.data(), size);
+    verifyDivision(a, b, r);
+  }
+}
+
+// Test division with misaligned pointers
+TEST_F(BinaryOperationsTest, DivideWithMisalignment) {
+  const size_t size = 1000;
+  const size_t offsets[] = {1, 2, 3, 4, 7};
+
+  std::vector<float> base_a =
+      generateRandomData<float>(size + 8, -100.0f, 100.0f);
+  std::vector<float> base_b =
+      generateRandomData<float>(size + 8, 0.1f, 100.0f);
+  std::vector<float> base_result(size + 8);
+
+  for (size_t offset_a : offsets) {
+    for (size_t offset_b : offsets) {
+      for (size_t offset_result : offsets) {
+        float *a_ptr = base_a.data() + offset_a;
+        float *b_ptr = base_b.data() + offset_b;
+        float *result_ptr = base_result.data() + offset_result;
+
+        std::vector<float> a_data(size);
+        std::vector<float> b_data(size);
+
+        for (size_t i = 0; i < size; i++) {
+          a_data[i] = a_ptr[i];
+          b_data[i] = b_ptr[i];
+        }
+
+        simd_ops::divide(a_ptr, b_ptr, result_ptr, size);
+
+        std::vector<float> result_data(size);
+        for (size_t i = 0; i < size; i++) {
+          result_data[i] = result_ptr[i];
+        }
+
+        verifyDivision(a_data, b_data, result_data);
+      }
+    }
   }
 }
 
