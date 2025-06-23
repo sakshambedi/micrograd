@@ -7,6 +7,8 @@
 #include <Eigen/Core>
 #include <algorithm>
 #include <cstddef>
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 #include <stdexcept>
 #include <string>
 #include <type_traits>

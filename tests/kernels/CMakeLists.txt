@@ -7,8 +7,9 @@ target_include_directories(test_cpu_kernel PRIVATE
                             ${XSIMD_INCLUDE_DIR})
 target_link_libraries(test_cpu_kernel gtest_main
                     cpu_kernel_lib ${Python3_LIBRARIES})
-# Ensure IEEE 754 compliance in tests
-target_compile_options(test_cpu_kernel PRIVATE -fno-fast-math)
+# Ensure IEEE 754 compliance and consistent float-to-integer casting behavior
+target_compile_options(test_cpu_kernel PRIVATE
+    -fno-fast-math -ffp-contract=on -fno-rounding-math -ftrapping-math)
 gtest_discover_tests(test_cpu_kernel)
 
 # Build Binary Operations tests
@@ -19,21 +20,10 @@ target_include_directories(test_binary_operations PRIVATE
                             ${XSIMD_INCLUDE_DIR})
 target_link_libraries(test_binary_operations gtest_main
                     cpu_kernel_lib ${Python3_LIBRARIES})
-# Ensure IEEE 754 compliance in tests
-target_compile_options(test_binary_operations PRIVATE -fno-fast-math)
+# Ensure IEEE 754 compliance and consistent float-to-integer casting behavior
+target_compile_options(test_binary_operations PRIVATE
+    -fno-fast-math -ffp-contract=on -fno-rounding-math -ftrapping-math)
 gtest_discover_tests(test_binary_operations)
-
-# Build Elementwise Add tests
-# add_executable(test_elementwise_add test_elementwise_add.cpp)
-# target_include_directories(test_elementwise_add PRIVATE
-#                             ${pybind11_SOURCE_DIR}/include
-#                             ${Python3_INCLUDE_DIRS}
-#                             ${XSIMD_INCLUDE_DIR})
-# target_link_libraries(test_elementwise_add gtest_main
-#                     cpu_kernel_lib ${Python3_LIBRARIES})
-# # Ensure IEEE 754 compliance in tests
-# target_compile_options(test_elementwise_add PRIVATE -fno-fast-math)
-# gtest_discover_tests(test_elementwise_add)
 
 # Build VecBuffer tests
 add_executable(test_vecbuffer test_vecbuffer.cpp)
@@ -43,8 +33,9 @@ target_include_directories(test_vecbuffer PRIVATE
                             ${XSIMD_INCLUDE_DIR})
 target_link_libraries(test_vecbuffer gtest_main
                     cpu_kernel_lib ${Python3_LIBRARIES})
-# Ensure IEEE 754 compliance in tests
-target_compile_options(test_vecbuffer PRIVATE -fno-fast-math)
+# Ensure IEEE 754 compliance and consistent float-to-integer casting behavior
+target_compile_options(test_vecbuffer PRIVATE
+    -fno-fast-math -ffp-contract=on -fno-rounding-math -ftrapping-math)
 gtest_discover_tests(test_vecbuffer)
 
 # Build DTypeEnum tests
@@ -55,8 +46,9 @@ target_include_directories(test_dtype_enum PRIVATE
                         ${XSIMD_INCLUDE_DIR})
 target_link_libraries(test_dtype_enum gtest_main
                     cpu_kernel_lib ${Python3_LIBRARIES})
-# Ensure IEEE 754 compliance in tests
-target_compile_options(test_dtype_enum PRIVATE -fno-fast-math)
+# Ensure IEEE 754 compliance and consistent float-to-integer casting behavior
+target_compile_options(test_dtype_enum PRIVATE
+    -fno-fast-math -ffp-contract=on -fno-rounding-math -ftrapping-math)
 gtest_discover_tests(test_dtype_enum)
 
 

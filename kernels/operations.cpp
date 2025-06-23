@@ -220,139 +220,67 @@ void divide(const T *lhs, const T *rhs, T *out, std::size_t n) noexcept {
   binary_kernel<T, DivOp>(lhs, rhs, out, n);
 }
 
-// Explicit template instantiations for all supported types
-
-// Add operations
-template void add<float>(const float *, const float *, float *,
-                         std::size_t) noexcept;
-template void add<double>(const double *, const double *, double *,
-                          std::size_t) noexcept;
-template void add<int8_t>(const int8_t *, const int8_t *, int8_t *,
-                          std::size_t) noexcept;
-template void add<uint8_t>(const uint8_t *, const uint8_t *, uint8_t *,
-                           std::size_t) noexcept;
-template void add<int16_t>(const int16_t *, const int16_t *, int16_t *,
-                           std::size_t) noexcept;
-template void add<uint16_t>(const uint16_t *, const uint16_t *, uint16_t *,
-                            std::size_t) noexcept;
-template void add<int32_t>(const int32_t *, const int32_t *, int32_t *,
-                           std::size_t) noexcept;
-template void add<uint32_t>(const uint32_t *, const uint32_t *, uint32_t *,
-                            std::size_t) noexcept;
-template void add<int64_t>(const int64_t *, const int64_t *, int64_t *,
-                           std::size_t) noexcept;
-template void add<uint64_t>(const uint64_t *, const uint64_t *, uint64_t *,
-                            std::size_t) noexcept;
-template void add<half>(const half *, const half *, half *,
-                        std::size_t) noexcept;
-
-// Subtract operations
-template void subtract<float>(const float *, const float *, float *,
-                              std::size_t) noexcept;
-template void subtract<double>(const double *, const double *, double *,
-                               std::size_t) noexcept;
-template void subtract<int8_t>(const int8_t *, const int8_t *, int8_t *,
-                               std::size_t) noexcept;
-template void subtract<uint8_t>(const uint8_t *, const uint8_t *, uint8_t *,
-                                std::size_t) noexcept;
-template void subtract<int16_t>(const int16_t *, const int16_t *, int16_t *,
-                                std::size_t) noexcept;
-template void subtract<uint16_t>(const uint16_t *, const uint16_t *, uint16_t *,
-                                 std::size_t) noexcept;
-template void subtract<int32_t>(const int32_t *, const int32_t *, int32_t *,
-                                std::size_t) noexcept;
-template void subtract<uint32_t>(const uint32_t *, const uint32_t *, uint32_t *,
-                                 std::size_t) noexcept;
-template void subtract<int64_t>(const int64_t *, const int64_t *, int64_t *,
-                                std::size_t) noexcept;
-template void subtract<uint64_t>(const uint64_t *, const uint64_t *, uint64_t *,
-                                 std::size_t) noexcept;
-template void subtract<half>(const half *, const half *, half *,
-                             std::size_t) noexcept;
-
-// Multiply operations
-template void multiply<float>(const float *, const float *, float *,
-                              std::size_t) noexcept;
-template void multiply<double>(const double *, const double *, double *,
-                               std::size_t) noexcept;
-template void multiply<int8_t>(const int8_t *, const int8_t *, int8_t *,
-                               std::size_t) noexcept;
-template void multiply<uint8_t>(const uint8_t *, const uint8_t *, uint8_t *,
-                                std::size_t) noexcept;
-template void multiply<int16_t>(const int16_t *, const int16_t *, int16_t *,
-                                std::size_t) noexcept;
-template void multiply<uint16_t>(const uint16_t *, const uint16_t *, uint16_t *,
-                                 std::size_t) noexcept;
-template void multiply<int32_t>(const int32_t *, const int32_t *, int32_t *,
-                                std::size_t) noexcept;
-template void multiply<uint32_t>(const uint32_t *, const uint32_t *, uint32_t *,
-                                 std::size_t) noexcept;
-template void multiply<int64_t>(const int64_t *, const int64_t *, int64_t *,
-                                std::size_t) noexcept;
-template void multiply<uint64_t>(const uint64_t *, const uint64_t *, uint64_t *,
-                                 std::size_t) noexcept;
-template void multiply<half>(const half *, const half *, half *,
-                             std::size_t) noexcept;
-
-// Divide operations
-template void divide<float>(const float *, const float *, float *,
-                            std::size_t) noexcept;
-template void divide<double>(const double *, const double *, double *,
-                             std::size_t) noexcept;
-template void divide<int8_t>(const int8_t *, const int8_t *, int8_t *,
-                             std::size_t) noexcept;
-template void divide<uint8_t>(const uint8_t *, const uint8_t *, uint8_t *,
-                              std::size_t) noexcept;
-template void divide<int16_t>(const int16_t *, const int16_t *, int16_t *,
-                              std::size_t) noexcept;
-template void divide<uint16_t>(const uint16_t *, const uint16_t *, uint16_t *,
-                               std::size_t) noexcept;
-template void divide<int32_t>(const int32_t *, const int32_t *, int32_t *,
-                              std::size_t) noexcept;
-template void divide<uint32_t>(const uint32_t *, const uint32_t *, uint32_t *,
-                               std::size_t) noexcept;
-template void divide<int64_t>(const int64_t *, const int64_t *, int64_t *,
-                              std::size_t) noexcept;
-template void divide<uint64_t>(const uint64_t *, const uint64_t *, uint64_t *,
-                               std::size_t) noexcept;
-template void divide<half>(const half *, const half *, half *,
+// Define a macro to instantiate a function template for a single type
+#define INSTANTIATE_FOR_TYPE(func, type)                                       \
+  template void func<type>(const type *, const type *, type *,                 \
                            std::size_t) noexcept;
 
-// Binary kernel explicit instantiations for important types
-template void binary_kernel<float, AddOp>(const float *, const float *, float *,
-                                          std::size_t) noexcept;
-template void binary_kernel<float, SubOp>(const float *, const float *, float *,
-                                          std::size_t) noexcept;
-template void binary_kernel<float, MulOp>(const float *, const float *, float *,
-                                          std::size_t) noexcept;
-template void binary_kernel<float, DivOp>(const float *, const float *, float *,
-                                          std::size_t) noexcept;
+#define INSTANTIATE_FOR_ALL_NUMERIC_TYPES(func)                                \
+  INSTANTIATE_FOR_TYPE(func, float)                                            \
+  INSTANTIATE_FOR_TYPE(func, double)                                           \
+  INSTANTIATE_FOR_TYPE(func, int8_t)                                           \
+  INSTANTIATE_FOR_TYPE(func, uint8_t)                                          \
+  INSTANTIATE_FOR_TYPE(func, int16_t)                                          \
+  INSTANTIATE_FOR_TYPE(func, uint16_t)                                         \
+  INSTANTIATE_FOR_TYPE(func, int32_t)                                          \
+  INSTANTIATE_FOR_TYPE(func, uint32_t)                                         \
+  INSTANTIATE_FOR_TYPE(func, int64_t)                                          \
+  INSTANTIATE_FOR_TYPE(func, uint64_t)                                         \
+  INSTANTIATE_FOR_TYPE(func, half)
 
-template void binary_kernel<double, AddOp>(const double *, const double *,
-                                           double *, std::size_t) noexcept;
-template void binary_kernel<double, SubOp>(const double *, const double *,
-                                           double *, std::size_t) noexcept;
-template void binary_kernel<double, MulOp>(const double *, const double *,
-                                           double *, std::size_t) noexcept;
-template void binary_kernel<double, DivOp>(const double *, const double *,
-                                           double *, std::size_t) noexcept;
+INSTANTIATE_FOR_ALL_NUMERIC_TYPES(add)
+INSTANTIATE_FOR_ALL_NUMERIC_TYPES(subtract)
+INSTANTIATE_FOR_ALL_NUMERIC_TYPES(multiply)
+INSTANTIATE_FOR_ALL_NUMERIC_TYPES(divide)
 
-template void binary_kernel<int32_t, AddOp>(const int32_t *, const int32_t *,
-                                            int32_t *, std::size_t) noexcept;
-template void binary_kernel<int32_t, SubOp>(const int32_t *, const int32_t *,
-                                            int32_t *, std::size_t) noexcept;
-template void binary_kernel<int32_t, MulOp>(const int32_t *, const int32_t *,
-                                            int32_t *, std::size_t) noexcept;
-template void binary_kernel<int32_t, DivOp>(const int32_t *, const int32_t *,
-                                            int32_t *, std::size_t) noexcept;
+#define INSTANTIATE_BINARY_KERNEL(type, op)                                    \
+  template void binary_kernel<type, op>(const type *, const type *, type *,    \
+                                        std::size_t) noexcept;
 
-template void binary_kernel<int64_t, AddOp>(const int64_t *, const int64_t *,
-                                            int64_t *, std::size_t) noexcept;
-template void binary_kernel<int64_t, SubOp>(const int64_t *, const int64_t *,
-                                            int64_t *, std::size_t) noexcept;
-template void binary_kernel<int64_t, MulOp>(const int64_t *, const int64_t *,
-                                            int64_t *, std::size_t) noexcept;
-template void binary_kernel<int64_t, DivOp>(const int64_t *, const int64_t *,
-                                            int64_t *, std::size_t) noexcept;
+INSTANTIATE_BINARY_KERNEL(float, AddOp)
+INSTANTIATE_BINARY_KERNEL(float, SubOp)
+INSTANTIATE_BINARY_KERNEL(float, MulOp)
+INSTANTIATE_BINARY_KERNEL(float, DivOp)
+INSTANTIATE_BINARY_KERNEL(double, AddOp)
+INSTANTIATE_BINARY_KERNEL(double, SubOp)
+INSTANTIATE_BINARY_KERNEL(double, MulOp)
+INSTANTIATE_BINARY_KERNEL(double, DivOp)
+INSTANTIATE_BINARY_KERNEL(int32_t, AddOp)
+INSTANTIATE_BINARY_KERNEL(int32_t, SubOp)
+INSTANTIATE_BINARY_KERNEL(int32_t, MulOp)
+INSTANTIATE_BINARY_KERNEL(int32_t, DivOp)
+INSTANTIATE_BINARY_KERNEL(int64_t, AddOp)
+INSTANTIATE_BINARY_KERNEL(int64_t, SubOp)
+INSTANTIATE_BINARY_KERNEL(int64_t, MulOp)
+INSTANTIATE_BINARY_KERNEL(int64_t, DivOp)
 
 } // namespace simd_ops
+PYBIND11_MODULE(operations, m) {
+  m.def("buffer_add", &simd_ops::buffer_add,
+        "Element-wise addition of two buffers", py::arg("a"), py::arg("b"),
+        py::arg("result_dtype"));
+
+  // Create a function to handle broadcasting for add
+  // m.def(
+  //     "add",
+  //     [](const Buffer &a, const Buffer &b, const std::vector<int> &a_shape,
+  //        const std::vector<int> &b_shape, const std::vector<int> &out_shape,
+  //        const std::string &result_dtype) {
+  //       // For now, we're just implementing buffer_add
+  //       // In a complete implementation, you would handle broadcasting here
+  //       return simd_ops::buffer_add(a, b, result_dtype);
+  //     },
+  //     "Element-wise addition with broadcasting support");
+
+  m.doc() = "High-performance SIMD operations for tensors";
+}

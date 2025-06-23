@@ -51,11 +51,9 @@ else:
         extra_compile_args += ["-march=armv8-a"]
 
 
-# Determine include directories based on platform
 def get_include_dirs():
     dirs = [pybind11.get_include()]
 
-    # Eigen include directory
     if "EIGEN3_INCLUDE_DIR" in os.environ:
         dirs.append(os.environ["EIGEN3_INCLUDE_DIR"])
     elif sys.platform == "darwin":
@@ -68,7 +66,6 @@ def get_include_dirs():
                 dirs.append(path)
                 break
 
-    # XSIMD include directory
     if "XSIMD_INCLUDE_DIR" in os.environ:
         dirs.append(os.environ["XSIMD_INCLUDE_DIR"])
     elif sys.platform == "darwin":
@@ -104,23 +101,21 @@ ext_modules = [
         extra_compile_args=extra_compile_args,
         extra_link_args=["-O3"] if not sys.platform == "win32" else [],
     ),
-    # Extension(
-    #     "grad.ops.operations",
-    #     [
-    #         "./kernels/cpu_kernel.cpp",
-    #         "./kernels/vecbuffer.cpp",
-    #         "./kernels/operations.cpp",
-    #     ],
-    #     include_dirs=get_include_dirs(),
-    #     language="c++",
-    #     extra_compile_args=extra_compile_args,
-    #     extra_link_args=["-O3"] if not sys.platform == "win32" else [],
-    # ),
+    Extension(
+        "grad.autograd.operations",
+        [
+            "./kernels/operations.cpp",
+        ],
+        include_dirs=get_include_dirs(),
+        language="c++",
+        extra_compile_args=extra_compile_args,
+        extra_link_args=["-O3"] if not sys.platform == "win32" else [],
+    ),
 ]
 
 setup(
     name="micrograd-kernels",
-    version="0.12.2",
+    version="0.12.5",
     packages=find_packages(),
     package_dir={"": "."},
     ext_modules=ext_modules,
