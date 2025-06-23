@@ -97,4 +97,29 @@ private:
   DType dtype_;
 };
 
+
+template <typename T>
+inline void Buffer::set_item(size_t index, T value) {
+  if (index >= size()) {
+    throw std::out_of_range("Buffer index out of range");
+  }
+
+  std::visit(
+      [&](auto &b) {
+        using DestType = std::decay_t<decltype(b[0])>;
+        b[index] = static_cast<DestType>(value);
+      },
+      data_);
+}
+
+// Buffer add(const Buffer &lhs, const Buffer &rhs,
+//            const std::vector<std::size_t> &lhs_shape,
+//            const std::vector<std::size_t> &rhs_shape,
+//            const std::vector<std::size_t> &out_shape, const std::string
+//            &dtype);
+
+// No external cast_buffer function needed, VecBuffer has built-in cast
+// functionality
+
+
 #endif // KERNELS_CPU_KERNEL_H_
