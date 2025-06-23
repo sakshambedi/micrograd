@@ -1,5 +1,3 @@
-# This file marks the grad.kernels directory as a Python package
-
 # Try to import the compiled cpu_kernel extension
 try:
     from grad.kernels import cpu_kernel  # type: ignore  # noqa :F401

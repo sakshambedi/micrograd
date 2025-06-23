@@ -101,18 +101,16 @@ ext_modules = [
         extra_compile_args=extra_compile_args,
         extra_link_args=["-O3"] if not sys.platform == "win32" else [],
     ),
-    # Extension(
-    #     "grad.ops.operations",
-    #     [
-    #         "./kernels/cpu_kernel.cpp",
-    #         "./kernels/vecbuffer.cpp",
-    #         "./kernels/operations.cpp",
-    #     ],
-    #     include_dirs=get_include_dirs(),
-    #     language="c++",
-    #     extra_compile_args=extra_compile_args,
-    #     extra_link_args=["-O3"] if not sys.platform == "win32" else [],
-    # ),
+    Extension(
+        "grad.autograd.operations",
+        [
+            "./kernels/operations.cpp",
+        ],
+        include_dirs=get_include_dirs(),
+        language="c++",
+        extra_compile_args=extra_compile_args,
+        extra_link_args=["-O3"] if not sys.platform == "win32" else [],
+    ),
 ]
 
 setup(

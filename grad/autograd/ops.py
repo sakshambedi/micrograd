@@ -2,34 +2,22 @@ from __future__ import annotations
 
 from typing import Any
 
+from grad.autograd import operations  # type:ignore
 from grad.autograd.function import Function
 from grad.buffer import Buffer
 from grad.dtype import dtypes
-from grad.kernels import cpu_kernel  # type: ignore
 from grad.tensor import Tensor
-from grad.utils.misc import tensor_stride, broadcast_shape
+from grad.utils.misc import broadcast_shape, tensor_stride
 
 
-# from grad.utils.misc import _nd_indices
-def _elementwise_forward(
-    ctx, a: Tensor, b: Tensor, kernel_func: Any, op_name: str | None = "elementwise"
-):
-    ctx.save_for_backward(a, b)
-
+def _elementwise_forward(ctx, a: Tensor, b: Tensor, op_name: str | None = "elementwise"):
     if a.storage is None or b.storage is None:
         raise ValueError(f"Cannot perform {op_name} on tensors with no storage")
 
+    ctx.save_for_backward(a, b)
     rdtype = dtypes._upcast(a.dtype, b.dtype)
     out_shape = broadcast_shape(a.shape, b.shape)
-    cpp_result_buffer = kernel_func(
-        a.storage._storage,
-        b.storage._storage,
-        list(a.shape),
-        list(b.shape),
-        out_shape,
-        rdtype.name,
-    )
-
+    cpp_result_buffer = operations.buffer_add(a.storage._storage, b.storage._storage, rdtype.name)
     result = Tensor.__new__(Tensor)
     result.shape = tuple(out_shape)
     result._stride = tensor_stride(result.shape)
@@ -46,7 +34,7 @@ class Add(Function):
     @staticmethod
     def forward(ctx: Function, a: Tensor, b: Tensor) -> Tensor:
         """Element-wise addition of two tensors."""
-        return _elementwise_forward(ctx, a, b, cpu_kernel.add, "Addition")
+        return _elementwise_forward(ctx, a, b, "Addition")
 
     @staticmethod
     def backward(ctx: Function, *grad_output: Any) -> Any:
@@ -58,7 +46,7 @@ class Sub(Function):
     @staticmethod
     def forward(ctx: Function, a: Tensor, b: Tensor) -> Tensor:
         """Element-wise subtraction of two tensors."""
-        return _elementwise_forward(ctx, a, b, cpu_kernel.sub, "Addition")
+        return _elementwise_forward(ctx, a, b, "Subtraction")
 
     @staticmethod
     def backward(ctx: Function, *grad_outputs: Any) -> Any:

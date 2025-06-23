@@ -97,13 +97,4 @@ private:
   DType dtype_;
 };
 
-// Buffer add(const Buffer &lhs, const Buffer &rhs,
-//            const std::vector<std::size_t> &lhs_shape,
-//            const std::vector<std::size_t> &rhs_shape,
-//            const std::vector<std::size_t> &out_shape, const std::string
-//            &dtype);
-
-// No external cast_buffer function needed, VecBuffer has built-in cast
-// functionality
-
 #endif // KERNELS_CPU_KERNEL_H_

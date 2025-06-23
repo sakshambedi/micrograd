@@ -19,10 +19,10 @@ The C++ kernel consists of three main components:
 
 ```markdown
 kernels/
-├── cpu_kernel.h/cpp      # Python bindings and Buffer class
-├── vecbuffer.h/cpp       # SIMD-optimized vector buffer
-├── operations.h/cpp      # Mathematical operations (add, sub, mul, div)
-└── cpu_kernel.h          # Header with DType enum and Buffer interface
+├── cpu_kernel.h/cpp # Python bindings and Buffer class
+├── vecbuffer.h/cpp # SIMD-optimized vector buffer
+├── operations.h/cpp # Mathematical operations (add, sub, mul, div)
+└── cpu_kernel.h # Header with DType enum and Buffer interface
 ```
 
 ### Key Components
@@ -142,6 +142,27 @@ make dev
 
 # Check dependencies
 make check
+
+# Format code (requires clang-format)
+make format
+
+# Lint code (requires cpplint)
+make lint
+
+# Quick test without rebuilding
+make quick-test
+
+# Show build artifacts
+make artifacts
+
+# Install the Python module
+make install
+
+# Uninstall the Python module
+make uninstall
+
+# Test Python module integration
+make python-test
 ```
 
 ### Method 3: Manual CMake
@@ -192,9 +213,9 @@ make dev
 2. **Update tests** in `tests/kernels/` directory
 3. **Build and test**:
 
-   ```bash
-   make dev
-   ```
+    ```bash
+    make dev
+    ```
 
 4. **Update Python bindings** if needed in `cpu_kernel.cpp`
 
@@ -204,32 +225,32 @@ make dev
 
 1. **Define operation in `operations.h`**:
 
-   ```cpp
-   template <typename T>
-   void new_operation(const T *lhs, const T *rhs, T *out, std::size_t n) noexcept;
-   ```
+    ```cpp
+    template <typename T>
+    void new_operation(const T *lhs, const T *rhs, T *out, std::size_t n) noexcept;
+    ```
 
 2. **Implement in `operations.cpp`**:
 
-   ```cpp
-   template <typename T>
-   void new_operation(const T *lhs, const T *rhs, T *out, std::size_t n) noexcept {
-       binary_kernel<T, NewOp>(lhs, rhs, out, n);
-   }
-   ```
+    ```cpp
+    template <typename T>
+    void new_operation(const T *lhs, const T *rhs, T *out, std::size_t n) noexcept {
+        binary_kernel<T, NewOp>(lhs, rhs, out, n);
+    }
+    ```
 
 3. **Add template instantiations**:
 
-   ```cpp
-   template void new_operation<float>(const float *, const float *, float *, std::size_t) noexcept;
-   // ... for other types
-   ```
+    ```cpp
+    template void new_operation<float>(const float *, const float *, float *, std::size_t) noexcept;
+    // ... for other types
+    ```
 
 4. **Add Python binding** in `cpu_kernel.cpp`:
 
-   ```cpp
-   .def("new_operation", &buffer_new_operation)
-   ```
+    ```cpp
+    .def("new_operation", &buffer_new_operation)
+    ```
 
 ### Adding New Data Types
 
@@ -243,24 +264,24 @@ make dev
 
 1. **Define operation struct** in `operations.cpp`:
 
-   ```cpp
-   struct NewOp {
-       template <typename T> static constexpr T apply_scalar(T a, T b) noexcept {
-           return /* operation */;
-       }
+    ```cpp
+    struct NewOp {
+        template <typename T> static constexpr T apply_scalar(T a, T b) noexcept {
+            return /* operation */;
+        }
 
-       template <typename Batch>
-       static constexpr Batch apply_simd(const Batch &a, const Batch &b) noexcept {
-           return /* SIMD operation */;
-       }
-   };
-   ```
+        template <typename Batch>
+        static constexpr Batch apply_simd(const Batch &a, const Batch &b) noexcept {
+            return /* SIMD operation */;
+        }
+    };
+    ```
 
 2. **Use in binary_kernel**:
 
-   ```cpp
-   binary_kernel<T, NewOp>(lhs, rhs, out, n);
-   ```
+    ```cpp
+    binary_kernel<T, NewOp>(lhs, rhs, out, n);
+    ```
 
 ## Testing
 
@@ -280,6 +301,12 @@ make quick-test
 make python-test
 ```
 
+The Python module test will:
+
+1. Check that the CPU kernel module can be imported
+2. Verify that a basic Buffer object can be created
+3. Test functionality with a sample operation
+
 ### Test Structure
 
 - **`tests/kernels/test_cpu_kernel.cpp`**: Buffer class tests
@@ -293,13 +320,13 @@ make python-test
 2. **Add to CMakeLists.txt** in `tests/kernels/CMakeLists.txt`
 3. **Follow GoogleTest conventions**:
 
-   ```cpp
-   #include <gtest/gtest.h>
+    ```cpp
+    #include <gtest/gtest.h>
 
-   TEST(BufferTest, NewFeature) {
-       // Test implementation
-   }
-   ```
+    TEST(BufferTest, NewFeature) {
+        // Test implementation
+    }
+    ```
 
 ## Troubleshooting
 
@@ -329,6 +356,12 @@ make clean && make build
 
 # Check if module exists
 ls build/*.so build/*.dylib build/*.dll
+
+# Install the module
+make install
+
+# Test the module
+make python-test
 ```
 
 #### 3. SIMD Compilation Errors
@@ -361,27 +394,37 @@ make VERBOSE=1
 
 1. **Use debug build** for development:
 
-   ```bash
-   make debug
-   ```
+    ```bash
+    make debug
+    ```
 
 2. **Enable verbose output**:
 
-   ```bash
-   ./build.sh --verbose
-   ```
+    ```bash
+    ./build.sh --verbose
+    ```
 
 3. **Check build artifacts**:
 
-   ```bash
-   make artifacts
-   ```
+    ```bash
+    make artifacts
+    ```
 
 4. **Test Python integration**:
 
-   ```bash
-   make python-test
-   ```
+    ```bash
+    make python-test
+    ```
+
+5. **Check environment setup**:
+
+    ```bash
+    make check
+    ```
+
+6. **Use compile_commands.json** (generated with `-DCMAKE_EXPORT_COMPILE_COMMANDS=ON`):
+    - Import in VSCode, CLion, or other IDEs
+    - Use with clangd for better code navigation and diagnostics
 
 ### Performance Optimization
 
@@ -398,6 +441,17 @@ make VERBOSE=1
 2. **Use const correctness** where appropriate
 3. **Add noexcept** to functions that don't throw
 4. **Use template specialization** for type-specific optimizations
+5. **Format code consistently** using:
+
+    ```bash
+    make format  # Uses clang-format
+    ```
+
+6. **Check code quality** with:
+
+    ```bash
+    make lint  # Uses cpplint
+    ```
 
 ### Performance
 
@@ -428,6 +482,20 @@ b = cpu_kernel.Buffer([4, 5, 6], "float32")
 # result = cpu_kernel.add(a, b, 'float32')
 ```
 
+### Installation in Python Projects
+
+To install the compiled module in your Python environment:
+
+```bash
+# Install in development mode
+make install
+
+# Uninstall if needed
+make uninstall
+```
+
+The installation process copies the compiled library to the `grad/kernels/` directory and uses pip's editable install feature (`pip install -e .`).
+
 ### Extending Python Interface
 
 1. **Add methods to Buffer class** in `cpu_kernel.cpp`
@@ -438,5 +506,15 @@ b = cpu_kernel.Buffer([4, 5, 6], "float32")
 ## Conclusion
 
 This build system provides a robust foundation for developing high-performance C++ kernels with Python integration. The modular design allows for easy extension and maintenance while maintaining optimal performance through SIMD optimizations.
+
+The makefile provides comprehensive targets for all aspects of development:
+
+- Building and compiling (`build`, `debug`, `release`)
+- Testing (`test`, `test-debug`, `quick-test`, `python-test`)
+- Code quality (`format`, `lint`)
+- Dependency management (`install-deps`, `check`)
+- Python integration (`install`, `uninstall`, `python-test`)
+
+Platform-specific details are automatically handled, with support for Linux, macOS, and Windows environments.
 
 For questions or issues, refer to the troubleshooting section or create an issue in the project repository.
