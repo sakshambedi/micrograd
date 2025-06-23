@@ -4,18 +4,21 @@ project(micrograd)
 set(CMAKE_CXX_STANDARD 17)
 
 # Enable SIMD optimizations while maintaining IEEE 754 compliance
-set(CMAKE_CXX_FLAGS_RELEASE
-    "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
-# Use targeted optimizations that preserve NaN and Infinity behaviors
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-math-errno -freciprocal-math")
+# Set common flags for both Release and Debug modes to ensure consistent behavior
+set(COMMON_FLAGS "-fno-math-errno -freciprocal-math -fno-fast-math -ffp-contract=on")
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mtune=native")
+    set(COMMON_FLAGS "${COMMON_FLAGS} -march=native -mtune=native")
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2 -mfma")
+        set(COMMON_FLAGS "${COMMON_FLAGS} -mavx2 -mfma")
     endif()
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX2")
+    set(COMMON_FLAGS "${COMMON_FLAGS} /arch:AVX2 /fp:strict")
 endif()
+
+# Set debug and release flags to have consistent behavior for float-to-int casting
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -DNDEBUG ${COMMON_FLAGS}")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 ${COMMON_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
 
 # Set up vcpkg toolchain if not already set
 if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)

@@ -558,14 +558,13 @@ TEST(CastBufferTest, OverflowUnderflowCasting) {
   auto int32_from_big_float = big_floats.cast<int32_t>();
   ASSERT_EQ(int32_from_big_float.size(), big_floats.size());
 
-  // Implementation-defined behavior, but typically:
-  // Values too large become INT_MAX, too small become INT_MIN
-  // or might wrap around (undefined behavior in C++)
-  EXPECT_TRUE(int32_from_big_float[0] == std::numeric_limits<int32_t>::max() ||
-              int32_from_big_float[0] < 0); // Overflow case
+  // We expect consistent behavior between Debug and Release builds
+  // For large positive values exceeding INT_MAX:
+  EXPECT_EQ(int32_from_big_float[0], std::numeric_limits<int32_t>::max());
 
-  EXPECT_TRUE(int32_from_big_float[1] == std::numeric_limits<int32_t>::min() ||
-              int32_from_big_float[1] > 0); // Underflow case
+  // For large negative values below INT_MIN:
+  // Should consistently become INT_MIN
+  EXPECT_EQ(int32_from_big_float[1], std::numeric_limits<int32_t>::min());
 
   // Test small float values to unsigned int (negative values)
   VecBuffer<float> neg_floats({-1.0f, -0.5f, -0.0f});

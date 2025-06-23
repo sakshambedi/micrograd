@@ -51,11 +51,9 @@ else:
         extra_compile_args += ["-march=armv8-a"]
 
 
-# Determine include directories based on platform
 def get_include_dirs():
     dirs = [pybind11.get_include()]
 
-    # Eigen include directory
     if "EIGEN3_INCLUDE_DIR" in os.environ:
         dirs.append(os.environ["EIGEN3_INCLUDE_DIR"])
     elif sys.platform == "darwin":
@@ -68,7 +66,6 @@ def get_include_dirs():
                 dirs.append(path)
                 break
 
-    # XSIMD include directory
     if "XSIMD_INCLUDE_DIR" in os.environ:
         dirs.append(os.environ["XSIMD_INCLUDE_DIR"])
     elif sys.platform == "darwin":
@@ -120,7 +117,7 @@ ext_modules = [
 
 setup(
     name="micrograd-kernels",
-    version="0.12.2",
+    version="0.12.5",
     packages=find_packages(),
     package_dir={"": "."},
     ext_modules=ext_modules,
