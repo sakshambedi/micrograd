@@ -233,6 +233,20 @@ py::object Buffer::get_item(size_t index) const {
       data_);
 }
 
+py::object Buffer::set_item(size_t index, py::object val) const {
+  if (index >= size()) {
+    throw std::out_of_range("Buffer index out of range");
+  }
+
+  std::visit(
+      [&](auto &b) {
+        using DestType = std::decay_t<decltype(b[0])>;
+        const_cast<DestType &>(b[index]) = val.cast<DestType>();
+      },
+      const_cast<BufferVariant &>(data_));
+  return val;
+}
+
 // -----------------------------------------------------------------------------
 PYBIND11_MODULE(cpu_kernel, m) {
   py::class_<Buffer>(m, "Buffer")
