@@ -9,6 +9,7 @@
         "micrograd.egg-info",
         "**/*.pyc",
         ".vscode",
-        "__cmake_systeminformation"
+        "__cmake_systeminformation",
+        ".cache"
     ]
 }

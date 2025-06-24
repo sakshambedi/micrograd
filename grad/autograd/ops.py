@@ -10,14 +10,17 @@ from grad.tensor import Tensor
 from grad.utils.misc import broadcast_shape, tensor_stride
 
 
-def _elementwise_forward(ctx, a: Tensor, b: Tensor, op_name: str | None = "elementwise"):
+def _elementwise_forward(ctx, a: Tensor, b: Tensor, op_type: operations.BinaryOpType):
     if a.storage is None or b.storage is None:
-        raise ValueError(f"Cannot perform {op_name} on tensors with no storage")
+        raise ValueError(f"Cannot perform {op_type} on tensors with no storage")
 
     ctx.save_for_backward(a, b)
     rdtype = dtypes._upcast(a.dtype, b.dtype)
     out_shape = broadcast_shape(a.shape, b.shape)
-    cpp_result_buffer = operations.buffer_add(a.storage._storage, b.storage._storage, rdtype.name)
+    # cpp_result_buffer = operations.buffer_add(a.storage._storage, b.storage._storage, rdtype.name)
+    cpp_result_buffer = operations.binary_op(
+        a.storage._storage, b.storage._storage, op_type, rdtype.name
+    )
     result = Tensor.__new__(Tensor)
     result.shape = tuple(out_shape)
     result._stride = tensor_stride(result.shape)
@@ -34,7 +37,7 @@ class Add(Function):
     @staticmethod
     def forward(ctx: Function, a: Tensor, b: Tensor) -> Tensor:
         """Element-wise addition of two tensors."""
-        return _elementwise_forward(ctx, a, b, "Addition")
+        return _elementwise_forward(ctx, a, b, operations.BinaryOpType.ADD)
 
     @staticmethod
     def backward(ctx: Function, *grad_output: Any) -> Any:
@@ -46,19 +49,20 @@ class Sub(Function):
     @staticmethod
     def forward(ctx: Function, a: Tensor, b: Tensor) -> Tensor:
         """Element-wise subtraction of two tensors."""
-        return _elementwise_forward(ctx, a, b, "Subtraction")
+        return _elementwise_forward(ctx, a, b, operations.BinaryOpType.SUB)
 
     @staticmethod
     def backward(ctx: Function, *grad_outputs: Any) -> Any:
-        # subtraction, dL/da =
-        pass
+        # For subtraction, L = a - b; dL/da = grad_output, dL/db = -grad_output
+        grad_output = grad_outputs[0]
+        return grad_output, -grad_output
 
 
 class Mul(Function):
     @staticmethod
     def forward(ctx: Function, a: Tensor, b: Tensor) -> Tensor:
         """Element-wise multiplication of two tensors."""
-        # return _elementwise_op(a, b, lambda x, y: x * y)
+        return _elementwise_forward(ctx, a, b, operations.BinaryOpType.MUL)
         ...
 
     @staticmethod
@@ -70,8 +74,7 @@ class Div(Function):
     @staticmethod
     def forward(ctx: Function, a: Tensor, b: Tensor) -> Tensor:
         """Element-wise division of two tensors."""
-        # return _elementwise_op(a, b, lambda x, y: x / y if y != 0 else float("inf"))
-        ...
+        return _elementwise_forward(ctx, a, b, operations.BinaryOpType.DIV)
 
     @staticmethod
     def backward(ctx: Function, *grad_outputs: Any) -> Any:
@@ -93,9 +96,10 @@ class Neg(Function):
     @staticmethod
     def forward(ctx: Function, a: Tensor) -> Tensor:
         """Element-wise negation."""
-        # ctx.save_for_backward(a)
         ...
 
     @staticmethod
     def backward(ctx: Function, *grad_outputs: Any) -> Any:
-        pass
+        # For negation: L = -a, dL/da = -grad_output
+        grad_output = grad_outputs[0]
+        return (-grad_output,)
