@@ -44,7 +44,7 @@ class dtypes:
     int32: Final[DType] = DType.new(5, 4, "int32", "i")
     uint32: Final[DType] = DType.new(6, 4, "uint32", "I")
     int64: Final[DType] = DType.new(7, 8, "int64", "q")
-    uint64: Final[DType] = DType.new(8, 8, "unint64", "Q")
+    uint64: Final[DType] = DType.new(8, 8, "uint64", "Q")
 
     # Floating point
     float16: Final[DType] = DType.new(9, 2, "float16", "e")

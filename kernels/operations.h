@@ -19,6 +19,11 @@ using half = Eigen::half;
 
 namespace simd_ops {
 
+enum class BinaryOpType : std::uint8_t { ADD, SUB, MUL, DIV };
+
+Buffer binary_op(const Buffer &a, const Buffer &b, BinaryOpType op,
+                 const std::string &result_dtype);
+
 // Public interface for buffer operations
 // Type trait to check if a type supports SIMD operations
 template <typename T> struct is_simd_supported : std::false_type {};

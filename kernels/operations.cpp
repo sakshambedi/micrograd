@@ -175,30 +175,6 @@ void binary_kernel(const T *__restrict__ lhs, const T *__restrict__ rhs,
   }
 }
 
-// Implementation of buffer_add
-Buffer buffer_add(const Buffer &a, const Buffer &b,
-                  const std::string &result_dtype) {
-  if (a.size() != b.size())
-    throw std::runtime_error("Buffers must have the same size");
-
-  Buffer a_cast = a.cast(result_dtype);
-  Buffer b_cast = b.cast(result_dtype);
-  Buffer result(a_cast.size(), result_dtype);
-
-  std::visit(
-      [&](auto &out_buf) {
-        using T = std::decay_t<decltype(out_buf[0])>;
-
-        // Always use the add function
-        auto &a_buf = std::get<VecBuffer<T>>(a_cast.raw());
-        auto &b_buf = std::get<VecBuffer<T>>(b_cast.raw());
-        add(a_buf.data(), b_buf.data(), out_buf.data(), a_cast.size());
-      },
-      result.raw());
-
-  return result;
-}
-
 // Convenience functions for common operations
 template <typename T>
 void add(const T *lhs, const T *rhs, T *out, std::size_t n) noexcept {
@@ -218,6 +194,100 @@ void multiply(const T *lhs, const T *rhs, T *out, std::size_t n) noexcept {
 template <typename T>
 void divide(const T *lhs, const T *rhs, T *out, std::size_t n) noexcept {
   binary_kernel<T, DivOp>(lhs, rhs, out, n);
+}
+
+Buffer buffer_add(const Buffer &a, const Buffer &b,
+                  const std::string &result_dtype) {
+
+  Buffer result(a.size(), result_dtype);
+
+  std::visit(
+      [&](auto &out_buf) {
+        using T = std::decay_t<decltype(out_buf[0])>;
+
+        auto &a_buf = std::get<VecBuffer<T>>(a.raw());
+        auto &b_buf = std::get<VecBuffer<T>>(b.raw());
+        add(a_buf.data(), b_buf.data(), out_buf.data(), a.size());
+      },
+      result.raw());
+
+  return result;
+}
+
+Buffer buffer_subtract(const Buffer &a, const Buffer &b,
+                       const std::string &result_dtype) {
+
+  Buffer result(a.size(), result_dtype);
+
+  std::visit(
+      [&](auto &out_buf) {
+        using T = std::decay_t<decltype(out_buf[0])>;
+
+        auto &a_buf = std::get<VecBuffer<T>>(a.raw());
+        auto &b_buf = std::get<VecBuffer<T>>(b.raw());
+        subtract(a_buf.data(), b_buf.data(), out_buf.data(), a.size());
+      },
+      result.raw());
+
+  return result;
+}
+
+Buffer buffer_multiply(const Buffer &a, const Buffer &b,
+                       const std::string &result_dtype) {
+
+  Buffer result(a.size(), result_dtype);
+
+  std::visit(
+      [&](auto &out_buf) {
+        using T = std::decay_t<decltype(out_buf[0])>;
+
+        auto &a_buf = std::get<VecBuffer<T>>(a.raw());
+        auto &b_buf = std::get<VecBuffer<T>>(b.raw());
+        multiply(a_buf.data(), b_buf.data(), out_buf.data(), a.size());
+      },
+      result.raw());
+
+  return result;
+}
+
+Buffer buffer_divide(const Buffer &a, const Buffer &b,
+                     const std::string &result_dtype) {
+
+  Buffer result(a.size(), result_dtype);
+
+  std::visit(
+      [&](auto &out_buf) {
+        using T = std::decay_t<decltype(out_buf[0])>;
+
+        auto &a_buf = std::get<VecBuffer<T>>(a.raw());
+        auto &b_buf = std::get<VecBuffer<T>>(b.raw());
+        divide(a_buf.data(), b_buf.data(), out_buf.data(), a.size());
+      },
+      result.raw());
+
+  return result;
+}
+
+Buffer binary_op(const Buffer &a, const Buffer &b, BinaryOpType op,
+                 const std::string &result_dtype) {
+  if (a.size() != b.size())
+    throw std::runtime_error("Buffers must have the same size");
+
+  Buffer a_cast = a.cast(result_dtype);
+  Buffer b_cast = b.cast(result_dtype);
+
+  switch (op) {
+  case BinaryOpType::ADD:
+    return buffer_add(a_cast, b_cast, result_dtype);
+  case BinaryOpType::SUB:
+    return buffer_subtract(a_cast, b_cast, result_dtype);
+  case BinaryOpType::MUL:
+    return buffer_multiply(a_cast, b_cast, result_dtype);
+  case BinaryOpType::DIV:
+    return buffer_divide(a_cast, b_cast, result_dtype);
+  default:
+    throw std::runtime_error("Unknown binary operation");
+  }
 }
 
 // Define a macro to instantiate a function template for a single type
@@ -266,21 +336,15 @@ INSTANTIATE_BINARY_KERNEL(int64_t, DivOp)
 
 } // namespace simd_ops
 PYBIND11_MODULE(operations, m) {
-  m.def("buffer_add", &simd_ops::buffer_add,
-        "Element-wise addition of two buffers", py::arg("a"), py::arg("b"),
-        py::arg("result_dtype"));
+  py::enum_<simd_ops::BinaryOpType>(m, "BinaryOpType")
+      .value("ADD", simd_ops::BinaryOpType::ADD)
+      .value("SUB", simd_ops::BinaryOpType::SUB)
+      .value("MUL", simd_ops::BinaryOpType::MUL)
+      .value("DIV", simd_ops::BinaryOpType::DIV);
 
-  // Create a function to handle broadcasting for add
-  // m.def(
-  //     "add",
-  //     [](const Buffer &a, const Buffer &b, const std::vector<int> &a_shape,
-  //        const std::vector<int> &b_shape, const std::vector<int> &out_shape,
-  //        const std::string &result_dtype) {
-  //       // For now, we're just implementing buffer_add
-  //       // In a complete implementation, you would handle broadcasting here
-  //       return simd_ops::buffer_add(a, b, result_dtype);
-  //     },
-  //     "Element-wise addition with broadcasting support");
+  m.def("binary_op", &simd_ops::binary_op,
+        "Generic binary operation on two buffers", py::arg("a"), py::arg("b"),
+        py::arg("op_name"), py::arg("result_dtype"));
 
   m.doc() = "High-performance SIMD operations for tensors";
 }
