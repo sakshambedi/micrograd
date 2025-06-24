@@ -93,7 +93,6 @@ class TestBuffer:
         ]
 
         for dt in supported_dtypes:
-            # Create a buffer directly rather than using _filled
             b = Buffer([1, 1, 1], dt)
             assert b._dtype == to_dtype(dt)
             assert len(b) == 3
@@ -103,14 +102,9 @@ class TestBuffer:
         b = Buffer([large_int], "int32")
         assert b[0] == large_int
 
-        # Skip 64-bit test if it causes issues
-        try:
-            larger_int = 2**63 - 1  # Max 64-bit int
-            b = Buffer([larger_int], "int64")
-            assert b[0] == larger_int
-        except Exception:
-            # If this fails, just skip the test
-            pass
+        larger_int = 2**63 - 1  # Max 64-bit int
+        b = Buffer([larger_int], "int64")
+        assert b[0] == larger_int
 
     def test_edge_cases(self):
         b = Buffer([1, 2.5, 3], "float32")

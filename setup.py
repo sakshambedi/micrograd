@@ -115,7 +115,7 @@ ext_modules = [
 
 setup(
     name="micrograd-kernels",
-    version="0.12.5",
+    version="0.12.61",
     packages=find_packages(),
     package_dir={"": "."},
     ext_modules=ext_modules,

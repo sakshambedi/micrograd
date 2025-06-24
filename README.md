@@ -5,7 +5,7 @@
 </p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/sakshambedi/micrograd)
 
 This project is a personal exploration and implementation of a simplified tensor library, inspired by [tinygrad](https://github.com/geohot/tinygrad) and [PyTorch](https://pytorch.org/). The primary goal is to understand the fundamental concepts and mechanics behind modern deep learning frameworks by building one from scratch.
@@ -14,7 +14,7 @@ This project is a personal exploration and implementation of a simplified tensor
 
 **micrograd** is a Python-based library with a high-performance C++ backend that provides a `Tensor` object, similar to those found in NumPy, PyTorch, or TensorFlow. It aims to replicate some of the core functionalities, particularly focusing on automatic differentiation and tensor operations, to gain a deeper insight into their inner workings.
 
-This is an educational project. While the aim is to create functional components.
+This is an educational project focused on learning the internals of deep learning frameworks through implementation.
 
 ## Current Features
 
@@ -23,13 +23,12 @@ This is an educational project. While the aim is to create functional components
 ### High-Performance Backend
 
 - **C++ extension with Eigen integration:**
-    - Vectorized operations using Eigen's SIMD capabilities
     - Efficient memory management with contiguous storage
     - Fast numeric operations through native C++ implementation
     - Cross-platform support via pybind11 bindings
-- **Multiple data type support through variant-based implementation:**
-    - Seamless handling of all numeric types in a single backend
-    - Zero-copy buffer protocol implementation for interoperability
+- **Multiple data type support:**
+    - Support for various numeric types in the C++ backend
+    - Zero-copy buffer protocol implementation for NumPy interoperability
 
 ### Tensor Creation and Data Types
 
@@ -38,11 +37,9 @@ This is an educational project. While the aim is to create functional components
     - Single values (scalars): `Tensor(5)` or `Tensor(3.14)`
     - Empty tensors: `Tensor(None)` (creates a scalar tensor with value 0)
 - **Comprehensive data type support:**
-    - `float32`, `float16`, `float64` for floating-point numbers
-    - `int32`, `int16`, `int8` for signed integers
-    - `uint16`, `uint8` for unsigned integers
-    - `bool` for boolean values
-    - Native `float16` support through Eigen
+    - Floating-point types: `float32`, `float64`
+    - Integer types: `int32`, `int16`, `int8`
+    - Unsigned integer types: `uint16`, `uint8`
 - **Factory methods:**
     - `Tensor.ones((2, 3))` - Create tensors filled with ones
     - `Tensor.zeros((2, 3))` - Create tensors filled with zeros
@@ -55,48 +52,25 @@ This is an educational project. While the aim is to create functional components
 
 - **Binary arithmetic operations:**
     - Addition (`+`) and Subtraction (`-`) with high-performance C++ backend
-    - Multiplication (`*`), Division (`/`), and Power (`**`) interfaces (implementation in progress)
+    - Multiplication (`*`) and Division (`/`) operations
     - Element-wise computation between tensors of the same shape
-    - High-performance implementation using Eigen when tensors are contiguous
     - Proper error handling for shape mismatches
-- **Unary operations:**
-    - Negation (`-tensor`) interface (implementation in progress)
 - **Reduction operations:**
     - `Tensor.sum()` with dtype preservation
-    - `Tensor.mean()` (interface defined, implementation in progress)
 - **Advanced operations:**
-    - Element-wise operations with proper type casting and upsampling
-    - Type promotion for mixed-type operations
+    - Element-wise operations with proper type casting
 
-### Memory Management and Performance
+### Memory Management
 
 - **C++ buffer management system:**
-    - Efficient memory allocation through Eigen's aligned allocator
+    - Efficient memory allocation
     - Direct access through buffer protocol
     - Variant-based storage for flexible data type handling
-    - SIMD acceleration through xsimd library
 - **Efficient storage:**
     - Contiguous memory layout using native C++ arrays
-    - Zero-copy operations through views and strides
-    - Memory sharing between Python and C++ without overhead
     - Buffer sharing between tensors via `.share()` method
 - **Performance optimizations:**
-    - Eigen-powered vectorized operations for significant performance improvements
-    - SIMD instructions leveraged through Eigen and xSIMD
-    - Contiguous memory access patterns for optimal cache performance
-    - Zero-copy views for reshape and transpose operations where possible
-    - C++/Python interoperability with minimal overhead through pybind11
-
-#### Building the SIMD backend
-
-```bash
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j
-python -m pip install ..
-```
-
-Initial benchmarks show that binary operations like addition on large tensors (1M elements) perform significantly faster with the C++/SIMD backend compared to pure Python implementation.
+    - Memory-efficient operations
 
 ### Shape Manipulation and Views
 
@@ -112,7 +86,6 @@ Initial benchmarks show that binary operations like addition on large tensors (1
 - **Stride manipulation:**
     - Direct access to tensor strides via `stride()` method
     - Non-contiguous tensor support through advanced stride handling
-    - Automatic contiguity management
 
 ### Automatic Differentiation System
 
@@ -123,7 +96,7 @@ Initial benchmarks show that binary operations like addition on large tensors (1
 - **Function-based autograd system:**
     - Base `Function` class with forward/backward methods
     - Context saving mechanism for backpropagation
-    - Implemented operations: Add (forward and backward pass), Sub (forward pass)
+    - Implemented operations: Add, Sub, Mul, Div (forward and backward passes)
     - Thread-local autograd state management
 - **Gradient propagation:**
     - Automatic gradient requirement propagation through operations
@@ -146,28 +119,15 @@ Initial benchmarks show that binary operations like addition on large tensors (1
     - `device` attribute on tensors
     - Foundation for GPU computation (future work)
 
-### Error Handling and Edge Cases
-
-- **Robust error handling:**
-    - Shape mismatch detection and reporting
-    - Division by zero handling (returns infinity following NumPy behavior)
-    - Index out of bounds protection
-    - Inconsistent tensor shape validation
-- **Special value support:**
-    - Proper handling of infinity, negative infinity, and NaN
-    - Zero-size tensor operations
-    - Subnormal number handling in float16
-
 ## Test Coverage
 
 The project includes comprehensive test coverage across multiple domains:
 
 - Tensor creation and manipulation
 - Shape operations and views
-- Binary operations (addition, subtraction)
+- Binary operations (addition, subtraction, multiplication, division)
 - Data type handling and conversion
 - Buffer management and sharing
-- Performance optimization with C++/Eigen
 
 Tests are designed to ensure the reliability of implemented features and provide examples for usage.
 
@@ -181,26 +141,24 @@ micrograd/
 │   ├── dtype.py             # Data type definitions and utilities
 │   ├── buffer.py            # Advanced buffer management with C++ bindings
 │   ├── device.py            # Device abstraction layer
-│   ├── kernel/
-│   │   └── __init__.py      # Compiled kernel code lives here
+│   ├── kernels/             # Compiled kernel code
 │   ├── autograd/
 │   │   ├── __init__.py      # Autograd package initialization
 │   │   ├── function.py      # Base Function class for autograd
 │   │   └── ops.py           # Mathematical operation implementations
 │   └── utils/
 │       ├── __init__.py      # Utils package initialization
-│       ├── misc.py          # Miscellaneous helper functions
-│       └── constants.py     # System constants and feature detection
+│       └── misc.py          # Miscellaneous helper functions
 ├── kernels/
 │   ├── __init__.py          # Kernels package initialization
-│   ├── cpu_kernel.cpp       # C++ implementation of buffer operations with Eigen
+│   ├── cpu_kernel.cpp       # C++ implementation of buffer operations
 │   └── cpu_kernel.h         # Header file for C++ kernel implementations
+├── examples/                # Example usage of micrograd
 ├── tests/
 │   ├── __init__.py          # Test package initialization
-│   ├── binary_ops_test.py   # Comprehensive binary operation tests
-│   ├── unary_ops_test.py    # Unary operation tests
+│   ├── ops_test.py          # Binary operation tests
 │   ├── tensor_test.py       # Core tensor functionality tests
-│   └── test_buffer.py       # Buffer management and performance tests
+│   └── test_buffer.py       # Buffer management tests
 ├── CMakeLists.txt           # CMake configuration for C++ extensions
 ├── setup.py                 # Package setup and build configuration
 └── README.md                # Project documentation
@@ -220,21 +178,57 @@ To build and install the package:
 2. **Install dependencies and build C++ extensions:**
 
     ```bash
-    # Install prerequisites
-    ./setup_prerequisite.sh
+    # Set up the complete development environment (install all prerequisites)
+    make setup-env
 
-    # Build C++ extensions
-    pip install -e .
+    # Build in Release mode
+    make build
+
+    # Install the Python module
+    make install
     ```
 
 3. **Run the comprehensive test suite:**
 
     ```bash
-    ./run_cpp_tests  # runs the cpu kernel tests
-    pytest -v # runs integration tests and python tests
+    # Test the C++ kernel
+    make test
+
+    # Test the Python module
+    pytest -v
+    ```
+
+    For development, you can use additional make targets:
+
+    ```bash
+    # Build in Debug mode
+    make debug
+
+    # Run quick test without full rebuild
+    make quick-test
+
+    # Clean build directory
+    make clean
+    ```
+
+    Run `make help` to see all available commands.
+
+4. **Run the example scripts:**
+
+    ```bash
+    # After installation, you can run the example scripts
+    python -m examples.basic_operations  # Basic tensor operations
+    python -m examples.buffer_example    # Buffer management examples
     ```
 
 ## How to Use / Explore
+
+The `examples` directory contains sample code showing how to use micrograd:
+
+- `examples/basic_operations.py` - Shows tensor creation, math operations, shape manipulation
+- `examples/buffer_example.py` - Demonstrates buffer management and operations
+
+Here's a quick overview of basic usage:
 
 ```python
 from grad.tensor import Tensor
@@ -247,8 +241,10 @@ c = Tensor.zeros((2, 3))
 d = Tensor.ones((3, 2))
 
 # Working with operations
-sum_tensor = a + b  # Addition works with C++ backend
-diff_tensor = a - b  # Subtraction works with C++ backend
+sum_tensor = a + b  # Addition with C++ backend
+diff_tensor = a - b  # Subtraction with C++ backend
+prod_tensor = a * b  # Multiplication
+quot_tensor = a / b  # Division
 
 # Advanced shape manipulation
 reshaped = a.view(3, 2)  # Reshape tensor
@@ -268,21 +264,23 @@ print(f"Converted to NumPy: {type(numpy_array)}")
 ### Short-term Goals
 
 - **Complete mathematical operations:**
-    - Implement multiplication, division, and power operations using C++ backend
+    - Add power operations (`**`)
     - Add negation and other unary operations
-    - Add matrix multiplication with Eigen optimizations
+    - Add matrix multiplication with optimizations
     - Implement broadcasting support for tensors of different shapes
     - Complete backward pass implementations for all operations
+- **Documentation:**
+    - Expand examples with more use cases
+    - Add API documentation
 
 ### Medium-term Goals
 
 - **Neural network components:**
     - Activation functions (ReLU, Sigmoid, Tanh, GELU)
     - Loss functions (MSE, Cross-Entropy, BCE)
-    - Basic optimizers (SGD, Adam, RMSprop)
+    - Basic optimizers (SGD, Adam)
     - Layer abstractions (Linear, Convolution)
 - **Performance optimizations:**
-    - Just-in-time compilation for computational graphs -- MAYBE
     - Multi-threading for large tensor operations
     - Memory pooling and reuse strategies
 
@@ -295,7 +293,6 @@ print(f"Converted to NumPy: {type(numpy_array)}")
 - **Advanced features:**
     - Dynamic computational graphs
     - Model serialization and loading
-    - Distributed computing support
     - Integration with existing ML ecosystems
 
 ## Contributing
