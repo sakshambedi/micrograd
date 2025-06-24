@@ -74,7 +74,8 @@ class Buffer:
     def _filled(cls, dtype: DTypeLike, num_elem: int, val: int | float) -> "Buffer":
         buff = cls.__new__(cls)
         buff._dtype = out_dtype = to_dtype(dtype)
-        buff._storage = cpu_kernel.Buffer(num_elem, out_dtype.name, val)
+        # buff._storage = cpu_kernel.Buffer(num_elem, out_dtype.name, val)
+        buff._storage = cpu_kernel.Buffer._filled(val, out_dtype.name, num_elem)
         return buff
 
     def __getitem__(self, idx: int):

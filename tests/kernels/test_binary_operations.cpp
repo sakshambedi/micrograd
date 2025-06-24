@@ -905,8 +905,9 @@ TEST_F(BinaryOperationsTest, BufferAddWithCasting) {
     b_raw[i] = b_data[i];
   }
 
-  // Perform addition with specified result type
-  Buffer result = simd_ops::buffer_add(a_buf, b_buf, "float32");
+  // Perform addition with specified result type using binary_op
+  Buffer result =
+      simd_ops::binary_op(a_buf, b_buf, simd_ops::BinaryOpType::ADD, "float32");
 
   // Verify results
   auto &result_vec = std::get<VecBuffer<float>>(result.raw());
@@ -939,8 +940,9 @@ TEST_F(BinaryOperationsTest, BufferAddMismatchedSizes) {
   }
 
   // Addition should fail with different sizes
-  EXPECT_THROW(simd_ops::buffer_add(a_buf, b_buf, "float32"),
-               std::runtime_error);
+  EXPECT_THROW(
+      simd_ops::binary_op(a_buf, b_buf, simd_ops::BinaryOpType::ADD, "float32"),
+      std::runtime_error);
 }
 
 // Test buffer addition with mixed types
@@ -957,7 +959,8 @@ TEST_F(BinaryOperationsTest, BufferAddWithTypeConversion) {
 
   // float output
   {
-    Buffer C = simd_ops::buffer_add(A, B, "float32");
+    Buffer C =
+        simd_ops::binary_op(A, B, simd_ops::BinaryOpType::ADD, "float32");
     auto &Cv = std::get<VecBuffer<float>>(C.raw());
     for (size_t i = 0; i < N; ++i) {
       float exp = i + (i + 0.5f);
@@ -967,7 +970,7 @@ TEST_F(BinaryOperationsTest, BufferAddWithTypeConversion) {
 
   // int32 output
   {
-    Buffer C = simd_ops::buffer_add(A, B, "int32");
+    Buffer C = simd_ops::binary_op(A, B, simd_ops::BinaryOpType::ADD, "int32");
     auto &Ci = std::get<VecBuffer<int32_t>>(C.raw());
     for (size_t i = 0; i < N; ++i) {
       int32_t exp = i + static_cast<int32_t>(i + 0.5f);

@@ -55,6 +55,35 @@ Buffer::Buffer(const py::buffer &view, const std::string &dtype) {
       data_);
 }
 
+Buffer Buffer::_filled(py::object &val, const std::string &dtype,
+                       std::size_t size) {
+  Buffer buf(size, dtype);
+  std::visit(
+      [&](auto &b) {
+        using T = std::decay_t<decltype(b[0])>;
+        T v;
+        if constexpr (std::is_same_v<T, half>) {
+          auto tmp = val.cast<float>();
+          v = static_cast<T>(tmp);
+        }
+        v = val.cast<T>();
+        // else if constexpr (std::is_integral_v<T>) {
+        //   try {
+        //     v = val.cast<T>();
+        //   } catch (const py::cast_error &) {
+        //     auto tmp = val.cast<double>();
+        //     v = static_cast<T>(tmp);
+        //   }
+        // } else {
+
+        //   v = val.cast<T>();
+        // }
+        std::fill(b.data(), b.data() + size, v);
+      },
+      buf.raw());
+  return buf;
+}
+
 std::size_t Buffer::size() const {
   return std::visit([](auto &b) { return b.size(); }, data_);
 }
@@ -264,6 +293,14 @@ PYBIND11_MODULE(cpu_kernel, m) {
       }))
       .def(py::init<std::size_t, const std::string &>())
       .def(py::init<py::buffer, const std::string &>())
+      .def_static(
+          "_filled",
+          [](py::object val, const std::string &dtype, std::size_t size) {
+            ;
+            return Buffer::_filled(val, dtype, size);
+          })
+
+      .def_static("full", &Buffer::_filled)
       .def("size", &Buffer::size)
       .def("get_dtype", &Buffer::dtype)
       .def("__repr__", &Buffer::repr)

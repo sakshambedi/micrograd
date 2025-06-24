@@ -3,6 +3,7 @@
 #include "../../kernels/cpu_kernel.h"
 #include "../../kernels/operations.h"
 #include <cassert>
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <gtest/gtest.h>
@@ -29,6 +30,312 @@ TEST(BufferTest, ConstructorAndSize) {
   Buffer bbuf(2, "uint8");
   EXPECT_EQ(bbuf.size(), 2);
   EXPECT_EQ(bbuf.dtype(), "uint8");
+}
+
+TEST(FilledBufferTest, FilledIntegerBuffers) {
+  py::scoped_interpreter guard{};
+
+  // Test with integer types
+  py::object int_val = py::cast(42);
+
+  // Test int8
+  Buffer int8_buf = Buffer::_filled(int_val, "int8", 5);
+  EXPECT_EQ(int8_buf.size(), 5);
+  EXPECT_EQ(int8_buf.dtype(), "int8");
+
+  for (size_t i = 0; i < int8_buf.size(); ++i) {
+    EXPECT_EQ(int8_buf.get_item(i).cast<int8_t>(), 42);
+  }
+
+  // Test int16
+  Buffer int16_buf = Buffer::_filled(int_val, "int16", 10);
+  EXPECT_EQ(int16_buf.size(), 10);
+  EXPECT_EQ(int16_buf.dtype(), "int16");
+
+  for (size_t i = 0; i < int16_buf.size(); ++i) {
+    EXPECT_EQ(int16_buf.get_item(i).cast<int16_t>(), 42);
+  }
+
+  // Test int32
+  Buffer int32_buf = Buffer::_filled(int_val, "int32", 3);
+  EXPECT_EQ(int32_buf.size(), 3);
+  EXPECT_EQ(int32_buf.dtype(), "int32");
+
+  for (size_t i = 0; i < int32_buf.size(); ++i) {
+    EXPECT_EQ(int32_buf.get_item(i).cast<int32_t>(), 42);
+  }
+
+  // Test int64
+  Buffer int64_buf = Buffer::_filled(int_val, "int64", 7);
+  EXPECT_EQ(int64_buf.size(), 7);
+  EXPECT_EQ(int64_buf.dtype(), "int64");
+
+  for (size_t i = 0; i < int64_buf.size(); ++i) {
+    EXPECT_EQ(int64_buf.get_item(i).cast<int64_t>(), 42);
+  }
+}
+
+TEST(FilledBufferTest, FilledUnsignedIntegerBuffers) {
+  py::scoped_interpreter guard{};
+
+  // Test with unsigned integer types
+  py::object uint_val = py::cast(255);
+
+  // Test uint8
+  Buffer uint8_buf = Buffer::_filled(uint_val, "uint8", 6);
+  EXPECT_EQ(uint8_buf.size(), 6);
+  EXPECT_EQ(uint8_buf.dtype(), "uint8");
+
+  for (size_t i = 0; i < uint8_buf.size(); ++i) {
+    EXPECT_EQ(uint8_buf.get_item(i).cast<uint8_t>(), 255);
+  }
+
+  // Test uint16
+  Buffer uint16_buf = Buffer::_filled(uint_val, "uint16", 4);
+  EXPECT_EQ(uint16_buf.size(), 4);
+  EXPECT_EQ(uint16_buf.dtype(), "uint16");
+
+  for (size_t i = 0; i < uint16_buf.size(); ++i) {
+    EXPECT_EQ(uint16_buf.get_item(i).cast<uint16_t>(), 255);
+  }
+
+  // Test uint32
+  Buffer uint32_buf = Buffer::_filled(uint_val, "uint32", 8);
+  EXPECT_EQ(uint32_buf.size(), 8);
+  EXPECT_EQ(uint32_buf.dtype(), "uint32");
+
+  for (size_t i = 0; i < uint32_buf.size(); ++i) {
+    EXPECT_EQ(uint32_buf.get_item(i).cast<uint32_t>(), 255);
+  }
+
+  // Test uint64
+  Buffer uint64_buf = Buffer::_filled(uint_val, "uint64", 2);
+  EXPECT_EQ(uint64_buf.size(), 2);
+  EXPECT_EQ(uint64_buf.dtype(), "uint64");
+
+  for (size_t i = 0; i < uint64_buf.size(); ++i) {
+    EXPECT_EQ(uint64_buf.get_item(i).cast<uint64_t>(), 255);
+  }
+}
+
+TEST(FilledBufferTest, FilledFloatBuffers) {
+  py::scoped_interpreter guard{};
+
+  // Test with floating point types
+  py::object float_val = py::cast(3.14159f);
+
+  // Test float32
+  Buffer float32_buf = Buffer::_filled(float_val, "float32", 9);
+  EXPECT_EQ(float32_buf.size(), 9);
+  EXPECT_EQ(float32_buf.dtype(), "float32");
+
+  for (size_t i = 0; i < float32_buf.size(); ++i) {
+    EXPECT_NEAR(float32_buf.get_item(i).cast<float>(), 3.14159f, 1e-5f);
+  }
+
+  // Test float64
+  Buffer float64_buf = Buffer::_filled(float_val, "float64", 4);
+  EXPECT_EQ(float64_buf.size(), 4);
+  EXPECT_EQ(float64_buf.dtype(), "float64");
+
+  for (size_t i = 0; i < float64_buf.size(); ++i) {
+    EXPECT_NEAR(float64_buf.get_item(i).cast<double>(), 3.14159, 1e-5);
+  }
+
+  // Test with integer values converted to float
+  py::object int_val = py::cast(42);
+  Buffer int_to_float_buf = Buffer::_filled(int_val, "float32", 3);
+  EXPECT_EQ(int_to_float_buf.size(), 3);
+  EXPECT_EQ(int_to_float_buf.dtype(), "float32");
+
+  for (size_t i = 0; i < int_to_float_buf.size(); ++i) {
+    EXPECT_FLOAT_EQ(int_to_float_buf.get_item(i).cast<float>(), 42.0f);
+  }
+}
+
+TEST(FilledBufferTest, EdgeCases) {
+  py::scoped_interpreter guard{};
+
+  // Test empty buffer
+  py::object val = py::cast(1);
+  Buffer empty_buf = Buffer::_filled(val, "int32", 0);
+  EXPECT_EQ(empty_buf.size(), 0);
+  EXPECT_EQ(empty_buf.dtype(), "int32");
+
+  // Test large buffer
+  const size_t large_size = 1000000; // 1 million elements
+  Buffer large_buf = Buffer::_filled(val, "int32", large_size);
+  EXPECT_EQ(large_buf.size(), large_size);
+  EXPECT_EQ(large_buf.dtype(), "int32");
+
+  // Check a few random positions
+  EXPECT_EQ(large_buf.get_item(0).cast<int32_t>(), 1);
+  EXPECT_EQ(large_buf.get_item(large_size / 2).cast<int32_t>(), 1);
+  EXPECT_EQ(large_buf.get_item(large_size - 1).cast<int32_t>(), 1);
+
+  // Test with special values
+  py::object zero_val = py::cast(0);
+  Buffer zero_buf = Buffer::_filled(zero_val, "float32", 10);
+  for (size_t i = 0; i < zero_buf.size(); ++i) {
+    EXPECT_EQ(zero_buf.get_item(i).cast<float>(), 0.0f);
+  }
+
+  py::object neg_val = py::cast(-1);
+  Buffer neg_buf = Buffer::_filled(neg_val, "int32", 10);
+  for (size_t i = 0; i < neg_buf.size(); ++i) {
+    EXPECT_EQ(neg_buf.get_item(i).cast<int32_t>(), -1);
+  }
+
+  // Test with extreme values
+  py::object max_int_val = py::cast(std::numeric_limits<int32_t>::max());
+  Buffer max_int_buf = Buffer::_filled(max_int_val, "int32", 5);
+  for (size_t i = 0; i < max_int_buf.size(); ++i) {
+    EXPECT_EQ(max_int_buf.get_item(i).cast<int32_t>(),
+              std::numeric_limits<int32_t>::max());
+  }
+
+  py::object min_int_val = py::cast(std::numeric_limits<int32_t>::min());
+  Buffer min_int_buf = Buffer::_filled(min_int_val, "int32", 5);
+  for (size_t i = 0; i < min_int_buf.size(); ++i) {
+    EXPECT_EQ(min_int_buf.get_item(i).cast<int32_t>(),
+              std::numeric_limits<int32_t>::min());
+  }
+}
+
+TEST(FilledBufferTest, TypeConversions) {
+  py::scoped_interpreter guard{};
+
+  // Test integer value being converted to float types
+  py::object int_val = py::cast(42);
+
+  // Integer to float32
+  Buffer float32_buf = Buffer::_filled(int_val, "float32", 3);
+  EXPECT_EQ(float32_buf.dtype(), "float32");
+  EXPECT_EQ(float32_buf.size(), 3);
+
+  for (size_t i = 0; i < float32_buf.size(); ++i) {
+    EXPECT_FLOAT_EQ(float32_buf.get_item(i).cast<float>(), 42.0f);
+  }
+
+  // Integer to float64
+  Buffer float64_buf = Buffer::_filled(int_val, "float64", 3);
+  EXPECT_EQ(float64_buf.dtype(), "float64");
+  EXPECT_EQ(float64_buf.size(), 3);
+
+  for (size_t i = 0; i < float64_buf.size(); ++i) {
+    EXPECT_DOUBLE_EQ(float64_buf.get_item(i).cast<double>(), 42.0);
+  }
+
+  // Integer to different integer types
+  py::object small_int = py::cast(127);
+
+  // Integer to int8
+  Buffer int8_buf = Buffer::_filled(small_int, "int8", 3);
+  EXPECT_EQ(int8_buf.dtype(), "int8");
+
+  for (size_t i = 0; i < int8_buf.size(); ++i) {
+    EXPECT_EQ(int8_buf.get_item(i).cast<int8_t>(), 127);
+  }
+
+  // Integer to uint8
+  Buffer uint8_buf = Buffer::_filled(small_int, "uint8", 3);
+  EXPECT_EQ(uint8_buf.dtype(), "uint8");
+
+  for (size_t i = 0; i < uint8_buf.size(); ++i) {
+    EXPECT_EQ(uint8_buf.get_item(i).cast<uint8_t>(), 127);
+  }
+}
+
+TEST(FilledBufferTest, FullMethodAlias) {
+  py::scoped_interpreter guard{};
+
+  // Test that full is an alias for _filled
+  py::object val = py::cast(7);
+
+  Buffer buf1 = Buffer::_filled(val, "int16", 5);
+  Buffer buf2 = Buffer::_filled(val, "int16", 5);
+
+  EXPECT_EQ(buf1.size(), buf2.size());
+  EXPECT_EQ(buf1.dtype(), buf2.dtype());
+
+  for (size_t i = 0; i < buf1.size(); ++i) {
+    EXPECT_EQ(buf1.get_item(i).cast<int16_t>(),
+              buf2.get_item(i).cast<int16_t>());
+  }
+}
+
+TEST(FilledBufferTest, SpecialFloatValues) {
+  py::scoped_interpreter guard{};
+
+  // Test with NaN for float32
+  py::object nan_val = py::eval("float('nan')");
+  Buffer nan_buf = Buffer::_filled(nan_val, "float32", 5);
+  EXPECT_EQ(nan_buf.size(), 5);
+  EXPECT_EQ(nan_buf.dtype(), "float32");
+
+  for (size_t i = 0; i < nan_buf.size(); ++i) {
+    float value = nan_buf.get_item(i).cast<float>();
+    EXPECT_TRUE(std::isnan(value));
+  }
+
+  // Test with infinity for float32
+  py::object inf_val = py::eval("float('inf')");
+  Buffer inf_buf = Buffer::_filled(inf_val, "float32", 5);
+  EXPECT_EQ(inf_buf.size(), 5);
+  EXPECT_EQ(inf_buf.dtype(), "float32");
+
+  for (size_t i = 0; i < inf_buf.size(); ++i) {
+    float value = inf_buf.get_item(i).cast<float>();
+    EXPECT_TRUE(std::isinf(value));
+  }
+
+  // Test with negative infinity for float64
+  py::object neg_inf_val = py::eval("float('-inf')");
+  Buffer neg_inf_buf = Buffer::_filled(neg_inf_val, "float64", 3);
+  EXPECT_EQ(neg_inf_buf.size(), 3);
+  EXPECT_EQ(neg_inf_buf.dtype(), "float64");
+
+  for (size_t i = 0; i < neg_inf_buf.size(); ++i) {
+    double value = neg_inf_buf.get_item(i).cast<double>();
+    EXPECT_TRUE(std::isinf(value));
+    EXPECT_LT(value, 0.0); // Check that it's negative infinity
+  }
+}
+
+TEST(FilledBufferTest, ExtremeSizes) {
+  py::scoped_interpreter guard{};
+
+  // Test with size = 1 (single element buffer)
+  py::object val = py::cast(42);
+  Buffer single_buf = Buffer::_filled(val, "int32", 1);
+  EXPECT_EQ(single_buf.size(), 1);
+  EXPECT_EQ(single_buf.get_item(0).cast<int32_t>(), 42);
+
+  // Test with very small but non-zero size
+  Buffer small_buf = Buffer::_filled(val, "int32", 2);
+  EXPECT_EQ(small_buf.size(), 2);
+  EXPECT_EQ(small_buf.get_item(0).cast<int32_t>(), 42);
+  EXPECT_EQ(small_buf.get_item(1).cast<int32_t>(), 42);
+}
+
+TEST(FilledBufferTest, ErrorConditions) {
+  py::scoped_interpreter guard{};
+
+  // Test with invalid dtype
+  py::object val = py::cast(42);
+
+  EXPECT_THROW(
+      { Buffer buf = Buffer::_filled(val, "invalid_dtype", 5); },
+      std::runtime_error);
+
+  // Test with empty string as dtype
+  EXPECT_THROW(
+      { Buffer buf = Buffer::_filled(val, "", 5); }, std::runtime_error);
+
+  // Test with completely invalid dtype
+  EXPECT_THROW(
+      { Buffer buf = Buffer::_filled(val, "not_a_valid_type", 100); },
+      std::runtime_error);
 }
 
 // Test dtypes
