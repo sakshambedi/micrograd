@@ -5,6 +5,7 @@
 #include <array>
 #include <cassert>
 #include <chrono>
+#include <cmath>
 #include <gtest/gtest.h>
 #include <iostream>
 #include <limits>
@@ -12,6 +13,7 @@
 #include <pybind11/numpy.h>
 #include <random>
 #include <vector>
+#include <xsimd/xsimd.hpp>
 
 namespace py = pybind11;
 
@@ -117,6 +119,78 @@ protected:
               << "Failure at index " << i;
         }
       }
+    }
+  }
+};
+
+// Unified Test Fixture for Unary Operations
+class UnaryOperationsTest : public ::testing::Test {
+protected:
+  void SetUp() override {
+    if (!Py_IsInitialized()) {
+      py::initialize_interpreter();
+    }
+  }
+
+  void TearDown() override {
+    if (Py_IsInitialized()) {
+      py::finalize_interpreter();
+    }
+  }
+
+  // Helper function to generate random values (same as BinaryOperationsTest)
+  template <typename T>
+  std::vector<T> generateRandomData(size_t size, T min_val, T max_val) {
+    std::vector<T> data(size);
+    std::random_device rd;
+    std::mt19937 gen(rd());
+
+    if constexpr (std::is_floating_point_v<T>) {
+      std::uniform_real_distribution<T> dist(min_val, max_val);
+      for (auto &val : data) {
+        val = dist(gen);
+      }
+    } else {
+      std::uniform_int_distribution<int> dist(static_cast<int>(min_val),
+                                              static_cast<int>(max_val));
+      for (auto &val : data) {
+        val = static_cast<T>(dist(gen));
+      }
+    }
+    return data;
+  }
+
+  template <typename T>
+  void verifyPower(const std::vector<T> &base, const std::vector<T> &exp,
+                   const std::vector<T> &result) {
+    for (size_t i = 0; i < result.size(); i++) {
+      if constexpr (std::is_floating_point_v<T>) {
+        T expected = std::pow(base[i], exp[i]);
+        T computed = result[i];
+        T diff = std::abs(computed - expected);
+        T tolerance = std::numeric_limits<T>::epsilon() * 100000;
+
+        EXPECT_NEAR(computed, expected, tolerance)
+            << "Power failure at index " << i << ": base=" << base[i]
+            << ", exp=" << exp[i] << ", computed=" << computed
+            << ", expected=" << expected << ", diff=" << diff
+            << ", tolerance=" << tolerance;
+      } else {
+        T expected = static_cast<T>(std::pow(static_cast<double>(base[i]),
+                                             static_cast<double>(exp[i])));
+        EXPECT_EQ(result[i], expected)
+            << "Failure at index " << i << ": base=" << base[i]
+            << ", exp=" << exp[i];
+      }
+    }
+  }
+
+  // Helper to verify negation results
+  template <typename T>
+  void verifyNegation(const std::vector<T> &input,
+                      const std::vector<T> &result) {
+    for (size_t i = 0; i < result.size(); i++) {
+      EXPECT_EQ(result[i], -input[i]) << "Failure at index " << i;
     }
   }
 };
@@ -977,6 +1051,215 @@ TEST_F(BinaryOperationsTest, BufferAddWithTypeConversion) {
       EXPECT_EQ(Ci[i], exp);
     }
   }
+}
+
+//------------------------------------------------------------------------------
+// Unary Operation Tests
+//------------------------------------------------------------------------------
+
+// Test power operation with float data
+TEST_F(UnaryOperationsTest, PowerFloat) {
+  const size_t size = 100;
+  std::vector<float> base = generateRandomData<float>(size, 0.1f, 10.0f);
+  std::vector<float> exp = generateRandomData<float>(size, 0.5f, 4.0f);
+  std::vector<float> result(size);
+
+  simd_ops::power<float>(base.data(), exp.data(), result.data(), size);
+
+  verifyPower(base, exp, result);
+
+  std::vector<float> test_base = {2.0f, 3.0f, 4.0f, 5.0f, 2.5f, 1.5f};
+  std::vector<float> test_exp = {3.0f, 2.0f, 0.5f, 2.0f, 2.0f, 3.0f};
+  std::vector<float> test_result(test_base.size());
+
+  simd_ops::power<float>(test_base.data(), test_exp.data(), test_result.data(),
+                         test_base.size());
+
+  verifyPower(test_base, test_exp, test_result);
+}
+
+// Test power operation with integer data
+TEST_F(UnaryOperationsTest, PowerInteger) {
+  const size_t size = 6;
+  std::vector<int32_t> base = {2, 3, 4, 5, 2, 10};
+  std::vector<int32_t> exp = {3, 2, 2, 2, 4, 2};
+  std::vector<int32_t> result(size);
+
+  simd_ops::power<int32_t>(base.data(), exp.data(), result.data(), size);
+
+  verifyPower(base, exp, result);
+}
+
+// Test power operation with Buffer class
+TEST_F(UnaryOperationsTest, PowerBuffer) {
+  try {
+    // Create test buffers
+    Buffer a(4, "float32");
+    Buffer b(4, "float32");
+
+    // Fill with test data
+    auto &a_data = std::get<VecBuffer<float>>(a.raw());
+    auto &b_data = std::get<VecBuffer<float>>(b.raw());
+
+    a_data[0] = 2.0f;
+    a_data[1] = 3.0f;
+    a_data[2] = 4.0f;
+    a_data[3] = 5.0f;
+    b_data[0] = 2.0f;
+    b_data[1] = 3.0f;
+    b_data[2] = 0.5f;
+    b_data[3] = 2.0f;
+
+    // Test power operation
+    Buffer power_result =
+        simd_ops::binary_op(a, b, simd_ops::BinaryOpType::POW, "float32");
+    auto &power_data = std::get<VecBuffer<float>>(power_result.raw());
+
+    std::vector<float> base_vec = {a_data[0], a_data[1], a_data[2], a_data[3]};
+    std::vector<float> exp_vec = {b_data[0], b_data[1], b_data[2], b_data[3]};
+    std::vector<float> result_vec = {power_data[0], power_data[1],
+                                     power_data[2], power_data[3]};
+
+    verifyPower(base_vec, exp_vec, result_vec);
+  } catch (const std::exception &e) {
+    FAIL() << "Exception thrown: " << e.what();
+  }
+}
+
+// Test power operation performance
+TEST_F(UnaryOperationsTest, PowerPerformance) {
+  const size_t N = 1000000;
+  std::vector<float> a(N), b(N), result(N);
+
+  // Initialize with test data
+  for (size_t i = 0; i < N; ++i) {
+    a[i] = static_cast<float>(i % 100) + 1.0f;
+    b[i] = 2.0f;
+  }
+
+  // Measure performance
+  auto start = std::chrono::high_resolution_clock::now();
+  simd_ops::power<float>(a.data(), b.data(), result.data(), N);
+  auto end = std::chrono::high_resolution_clock::now();
+  auto duration =
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+          .count();
+
+  // Verify at least a subset of results
+  for (size_t i = 0; i < 100; ++i) {
+    size_t idx = i * (N / 100);
+    EXPECT_NEAR(result[idx], std::pow(a[idx], b[idx]), 0.001f);
+  }
+}
+
+//------------------------------------------------------------------------------
+// Negation Operation Tests
+//------------------------------------------------------------------------------
+
+// Test negation operation with float data
+TEST_F(UnaryOperationsTest, NegateFloat) {
+  const size_t size = 100;
+  std::vector<float> input = generateRandomData<float>(size, -10.0f, 10.0f);
+  std::vector<float> result(size);
+
+  // Use the SIMD negate function
+  simd_ops::negate<float>(input.data(), result.data(), size);
+
+  // Verify results
+  verifyNegation(input, result);
+
+  // Check specific test cases
+  std::vector<float> test_input = {1.5f, -2.5f, 0.0f, 3.14f, -1.0f, 42.0f};
+  std::vector<float> test_result(test_input.size());
+
+  simd_ops::negate<float>(test_input.data(), test_result.data(),
+                          test_input.size());
+  verifyNegation(test_input, test_result);
+}
+
+// Test negation operation with integer data
+TEST_F(UnaryOperationsTest, NegateInteger) {
+  const size_t size = 6;
+  std::vector<int32_t> input = {1, -2, 0, 42, -100, 7};
+  std::vector<int32_t> result(size);
+
+  // Use the SIMD negate function
+  simd_ops::negate<int32_t>(input.data(), result.data(), size);
+
+  // Verify results
+  verifyNegation(input, result);
+}
+
+// Test negation operation with Buffer class
+TEST_F(UnaryOperationsTest, NegateBuffer) {
+  try {
+
+    Buffer a(4, "float32");
+
+    auto &a_data = std::get<VecBuffer<float>>(a.raw());
+
+    a_data[0] = 2.0f;
+    a_data[1] = -3.0f;
+    a_data[2] = 0.0f;
+    a_data[3] = 5.0f;
+
+    Buffer neg_result =
+        simd_ops::unary_op(a, simd_ops::UnaryOpType::NEG, "float32");
+    auto &neg_data = std::get<VecBuffer<float>>(neg_result.raw());
+
+    std::vector<float> input_vec = {a_data[0], a_data[1], a_data[2], a_data[3]};
+    std::vector<float> result_vec = {neg_data[0], neg_data[1], neg_data[2],
+                                     neg_data[3]};
+
+    verifyNegation(input_vec, result_vec);
+  } catch (const std::exception &e) {
+    FAIL() << "Exception thrown: " << e.what();
+  }
+}
+
+// Test negation operation performance
+TEST_F(UnaryOperationsTest, NegatePerformance) {
+  const size_t N = 1000000;
+  std::vector<float> a(N), result(N);
+
+  // Initialize with test data
+  for (size_t i = 0; i < N; ++i) {
+    a[i] = static_cast<float>(i % 100) - 50.0f;
+  }
+
+  // Measure performance
+  auto start = std::chrono::high_resolution_clock::now();
+  simd_ops::negate<float>(a.data(), result.data(), N);
+  auto end = std::chrono::high_resolution_clock::now();
+  auto duration =
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+          .count();
+
+  // Verify at least a subset of results
+  for (size_t i = 0; i < 100; ++i) {
+    size_t idx = i * (N / 100);
+    EXPECT_EQ(result[idx], -a[idx]);
+  }
+}
+
+//------------------------------------------------------------------------------
+// SIMD Information
+//------------------------------------------------------------------------------
+
+TEST(SIMDInfo, PrintSIMDWidths) {
+  std::cout << "SIMD Information:\n";
+  std::cout << "================\n";
+
+  std::cout << "Float SIMD width: " << xsimd::batch<float>::size
+            << " elements\n";
+  std::cout << "Double SIMD width: " << xsimd::batch<double>::size
+            << " elements\n";
+  std::cout << "Int32 SIMD width: " << xsimd::batch<int32_t>::size
+            << " elements\n";
+  std::cout << "Int64 SIMD width: " << xsimd::batch<int64_t>::size
+            << " elements\n";
+  std::cout << "\n";
+  SUCCEED();
 }
 
 int main(int argc, char **argv) {
