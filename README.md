@@ -50,9 +50,11 @@ This is an educational project focused on learning the internals of deep learnin
 
 ### Mathematical Operations
 
-- **Binary arithmetic operations:**
+- **Binary and unary arithmetic operations:**
     - Addition (`+`) and Subtraction (`-`) with high-performance C++ backend
     - Multiplication (`*`) and Division (`/`) operations
+    - Power operations (`**`) for element-wise exponentiation
+    - Negation (`-tensor`) for sign inversion
     - Element-wise computation between tensors of the same shape
     - Proper error handling for shape mismatches
 - **Reduction operations:**
@@ -266,11 +268,10 @@ print(f"Converted to NumPy: {type(numpy_array)}")
 ### Short-term Goals
 
 - **Complete mathematical operations:**
-    - Add power operations (`**`)
-    - Add negation and other unary operations
     - Add matrix multiplication with optimizations
     - Implement broadcasting support for tensors of different shapes
     - Complete backward pass implementations for all operations
+
 - **Documentation:**
     - Expand examples with more use cases
     - Add API documentation
@@ -309,5 +310,3 @@ Since this is primarily a learning project, direct contributions might not be th
 ## License
 
 This project is available under the MIT License.
-
----
