@@ -240,7 +240,8 @@ void binary_kernel(const T *__restrict__ lhs, const T *__restrict__ rhs,
       return;
     }
 
-    bool aligned = is_aligned<T>(lhs) && is_aligned<T>(rhs) && is_aligned<T>(out);
+    bool aligned =
+        is_aligned<T>(lhs) && is_aligned<T>(rhs) && is_aligned<T>(out);
     if (aligned) {
       binary_kernel_impl<T, Op, true>(lhs, rhs, out, n);
     } else {
