@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <optional>
 #include <string>
 
 namespace simd_ops {
@@ -242,6 +243,7 @@ void binary_kernel(const T *__restrict__ lhs, const T *__restrict__ rhs,
 
     bool aligned =
         is_aligned<T>(lhs) && is_aligned<T>(rhs) && is_aligned<T>(out);
+        is_aligned<T>(lhs) && is_aligned<T>(rhs) && is_aligned<T>(out);
     if (aligned) {
       binary_kernel_impl<T, Op, true>(lhs, rhs, out, n);
     } else {
@@ -417,16 +419,33 @@ Buffer buffer_power(const Buffer &a, const Buffer &b,
   return result;
 }
 
-Buffer buffer_negate(const Buffer &a, const std::string &result_dtype) {
+  const Buffer *a_ptr = &a;
+  const Buffer *b_ptr = &b;
 
-  Buffer result(a.size(), result_dtype);
+  std::optional<Buffer> a_cast;
+  std::optional<Buffer> b_cast;
 
-  std::visit(
-      [&](auto &out_buf) {
-        using T = std::decay_t<decltype(out_buf[0])>;
+  if (a.dtype() != result_dtype) {
+    a_cast.emplace(a.cast(result_dtype));
+    a_ptr = &*a_cast;
+  }
+  if (b.dtype() != result_dtype) {
+    b_cast.emplace(b.cast(result_dtype));
+    b_ptr = &*b_cast;
+  }
+    return buffer_add(*a_ptr, *b_ptr, result_dtype);
+    return buffer_subtract(*a_ptr, *b_ptr, result_dtype);
+    return buffer_multiply(*a_ptr, *b_ptr, result_dtype);
+    return buffer_divide(*a_ptr, *b_ptr, result_dtype);
+    return buffer_power(*a_ptr, *b_ptr, result_dtype);
 
-        auto &a_buf = std::get<VecBuffer<T>>(a.raw());
-        negate(a_buf.data(), out_buf.data(), a.size());
+  const Buffer *a_ptr = &a;
+  std::optional<Buffer> a_cast;
+  if (a.dtype() != result_dtype) {
+    a_cast.emplace(a.cast(result_dtype));
+    a_ptr = &*a_cast;
+  }
+    return buffer_negate(*a_ptr, result_dtype);
       },
       result.raw());
 
