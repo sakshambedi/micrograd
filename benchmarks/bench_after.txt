@@ -1,0 +1,1 @@
+size=1000000 elapsed=0.007780 sec

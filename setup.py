@@ -105,6 +105,8 @@ ext_modules = [
         "grad.autograd.operations",
         [
             "./kernels/operations.cpp",
+            "./kernels/cpu_kernel.cpp",
+            "./kernels/vecbuffer.cpp",
         ],
         include_dirs=get_include_dirs(),
         language="c++",

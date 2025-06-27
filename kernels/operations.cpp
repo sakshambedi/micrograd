@@ -156,10 +156,10 @@ struct NegOp {
 };
 
 // Core SIMD binary operation kernel - fully optimized for performance
-template <typename T, typename Op>
-void binary_kernel_aligned(const T *__restrict__ lhs, const T *__restrict__ rhs,
-                           T *__restrict__ out, std::size_t n) noexcept {
-  // half precision doesn't have SIMD support yet
+
+template <typename T, typename Op, bool Aligned>
+void binary_kernel_impl(const T *__restrict__ lhs, const T *__restrict__ rhs,
+                        T *__restrict__ out, std::size_t n) noexcept {
   if constexpr (std::is_same_v<T, half>) {
     for (std::size_t i = 0; i < n; ++i) {
       out[i] = Op::apply_scalar(lhs[i], rhs[i]);
@@ -167,52 +167,54 @@ void binary_kernel_aligned(const T *__restrict__ lhs, const T *__restrict__ rhs,
   } else {
     using batch_type = xsimd::batch<T>;
     constexpr std::size_t batch_size = batch_type::size;
+    constexpr std::size_t unroll = 4;
 
     std::size_t i = 0;
     const std::size_t simd_end = batch_size > 0 ? n - (n % batch_size) : 0;
 
-    // Main SIMD loop - assumes aligned memory
+    auto load = [&](const T *ptr) {
+      if constexpr (Aligned)
+        return batch_type::load_aligned(ptr);
+      else
+        return batch_type::load_unaligned(ptr);
+    };
+
+    auto store = [&](T *ptr, const batch_type &val) {
+      if constexpr (Aligned)
+        val.store_aligned(ptr);
+      else
+        val.store_unaligned(ptr);
+    };
+
+    const std::size_t unroll_step = unroll * batch_size;
+    for (; i + unroll_step <= simd_end; i += unroll_step) {
+      auto a0 = load(lhs + i);
+      auto b0 = load(rhs + i);
+      auto a1 = load(lhs + i + batch_size);
+      auto b1 = load(rhs + i + batch_size);
+      auto a2 = load(lhs + i + 2 * batch_size);
+      auto b2 = load(rhs + i + 2 * batch_size);
+      auto a3 = load(lhs + i + 3 * batch_size);
+      auto b3 = load(rhs + i + 3 * batch_size);
+
+      auto r0 = Op::apply_simd(a0, b0);
+      auto r1 = Op::apply_simd(a1, b1);
+      auto r2 = Op::apply_simd(a2, b2);
+      auto r3 = Op::apply_simd(a3, b3);
+
+      store(out + i, r0);
+      store(out + i + batch_size, r1);
+      store(out + i + 2 * batch_size, r2);
+      store(out + i + 3 * batch_size, r3);
+    }
+
     for (; i < simd_end; i += batch_size) {
-      auto a_batch = batch_type::load_aligned(&lhs[i]);
-      auto b_batch = batch_type::load_aligned(&rhs[i]);
+      auto a_batch = load(lhs + i);
+      auto b_batch = load(rhs + i);
       auto result = Op::apply_simd(a_batch, b_batch);
-      result.store_aligned(&out[i]);
+      store(out + i, result);
     }
 
-    // Handle remaining elements with scalar operations
-    for (; i < n; ++i) {
-      out[i] = Op::apply_scalar(lhs[i], rhs[i]);
-    }
-  }
-}
-
-// SIMD binary operation kernel with unaligned memory handling
-template <typename T, typename Op>
-void binary_kernel_unaligned(const T *__restrict__ lhs,
-                             const T *__restrict__ rhs, T *__restrict__ out,
-                             std::size_t n) noexcept {
-  // Special handling for half precision which doesn't support SIMD
-  if constexpr (std::is_same_v<T, half>) {
-    for (std::size_t i = 0; i < n; ++i) {
-      out[i] = Op::apply_scalar(lhs[i], rhs[i]);
-    }
-  } else {
-    using batch_type = xsimd::batch<T>;
-    constexpr std::size_t batch_size = batch_type::size;
-
-    // Process elements in SIMD-sized chunks using unaligned loads/stores
-    std::size_t i = 0;
-    const std::size_t simd_end = batch_size > 0 ? n - (n % batch_size) : 0;
-
-    // Main SIMD loop with unaligned memory access
-    for (; i < simd_end; i += batch_size) {
-      auto a_batch = batch_type::load_unaligned(&lhs[i]);
-      auto b_batch = batch_type::load_unaligned(&rhs[i]);
-      auto result = Op::apply_simd(a_batch, b_batch);
-      result.store_unaligned(&out[i]);
-    }
-
-    // Handle remaining elements with scalar operations
     for (; i < n; ++i) {
       out[i] = Op::apply_scalar(lhs[i], rhs[i]);
     }
@@ -238,11 +240,11 @@ void binary_kernel(const T *__restrict__ lhs, const T *__restrict__ rhs,
       return;
     }
 
-    // Check if all pointers are properly aligned
-    if (is_aligned<T>(lhs) && is_aligned<T>(rhs) && is_aligned<T>(out)) {
-      binary_kernel_aligned<T, Op>(lhs, rhs, out, n);
+    bool aligned = is_aligned<T>(lhs) && is_aligned<T>(rhs) && is_aligned<T>(out);
+    if (aligned) {
+      binary_kernel_impl<T, Op, true>(lhs, rhs, out, n);
     } else {
-      binary_kernel_unaligned<T, Op>(lhs, rhs, out, n);
+      binary_kernel_impl<T, Op, false>(lhs, rhs, out, n);
     }
   }
 }
