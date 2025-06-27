@@ -46,7 +46,8 @@ class Function:
         from grad.tensor import Tensor
 
         ctx = cls()
-        result = cls.forward(ctx, *inputs, **kwargs)
+        tensor_inputs = [i if isinstance(i, Tensor) else Tensor(i) for i in inputs]
+        result = cls.forward(ctx, *tensor_inputs, **kwargs)
         require_grad = any(
             getattr(tensor, "requires_grad", False)
             for tensor in inputs

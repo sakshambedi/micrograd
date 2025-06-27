@@ -10,7 +10,7 @@ from grad.tensor import Tensor
 from grad.utils.misc import broadcast_shape, tensor_stride
 
 
-def _elementwise_forward(ctx, a: Tensor, b: Tensor, op_type: operations.BinaryOpType):
+def _elementwise_operation(ctx, a: Tensor, b: Tensor, op_type: operations.BinaryOpType):
     if a.storage is None or b.storage is None:
         raise ValueError(f"Cannot perform {op_type} on tensors with no storage")
 
@@ -25,9 +25,28 @@ def _elementwise_forward(ctx, a: Tensor, b: Tensor, op_type: operations.BinaryOp
     result.shape = tuple(out_shape)
     result._stride = tensor_stride(result.shape)
     result.device = (a.device or b.device) or "cpu"
-    result._contiguous = True
+    result._contiguous = a._contiguous and b._contiguous
     result.base_offset = 0
     result.storage = Buffer._from_cpp_buffer(cpp_result_buffer, rdtype)
+    result.grad, result.grad_fn, result.requires_grad = None, None, None
+
+    return result
+
+
+def _unary_operation(ctx, a: Tensor, op_type: operations.UnaryOpType):
+    if a.storage is None:
+        raise ValueError(f"Cannot perform {op_type} on tensors with no storage")
+
+    ctx.save_for_backward(a)
+
+    cpp_result_buffer = operations.unary_op(a.storage._storage, op_type, a.dtype.name)
+    result = Tensor.__new__(Tensor)
+    result.shape = tuple(a.shape)
+    result._stride = tensor_stride(result.shape)
+    result.device = a.device or "cpu"
+    result._contiguous = a._contiguous
+    result.base_offset = 0
+    result.storage = Buffer._from_cpp_buffer(cpp_result_buffer, a.dtype)
     result.grad, result.grad_fn, result.requires_grad = None, None, None
 
     return result
@@ -37,7 +56,7 @@ class Add(Function):
     @staticmethod
     def forward(ctx: Function, a: Tensor, b: Tensor) -> Tensor:
         """Element-wise addition of two tensors."""
-        return _elementwise_forward(ctx, a, b, operations.BinaryOpType.ADD)
+        return _elementwise_operation(ctx, a, b, operations.BinaryOpType.ADD)
 
     @staticmethod
     def backward(ctx: Function, *grad_output: Any) -> Any:
@@ -49,7 +68,7 @@ class Sub(Function):
     @staticmethod
     def forward(ctx: Function, a: Tensor, b: Tensor) -> Tensor:
         """Element-wise subtraction of two tensors."""
-        return _elementwise_forward(ctx, a, b, operations.BinaryOpType.SUB)
+        return _elementwise_operation(ctx, a, b, operations.BinaryOpType.SUB)
 
     @staticmethod
     def backward(ctx: Function, *grad_outputs: Any) -> Any:
@@ -62,7 +81,7 @@ class Mul(Function):
     @staticmethod
     def forward(ctx: Function, a: Tensor, b: Tensor) -> Tensor:
         """Element-wise multiplication of two tensors."""
-        return _elementwise_forward(ctx, a, b, operations.BinaryOpType.MUL)
+        return _elementwise_operation(ctx, a, b, operations.BinaryOpType.MUL)
         ...
 
     @staticmethod
@@ -74,7 +93,7 @@ class Div(Function):
     @staticmethod
     def forward(ctx: Function, a: Tensor, b: Tensor) -> Tensor:
         """Element-wise division of two tensors."""
-        return _elementwise_forward(ctx, a, b, operations.BinaryOpType.DIV)
+        return _elementwise_operation(ctx, a, b, operations.BinaryOpType.DIV)
 
     @staticmethod
     def backward(ctx: Function, *grad_outputs: Any) -> Any:
@@ -85,10 +104,12 @@ class Pow(Function):
     @staticmethod
     def forward(ctx: Function, a: Tensor, b: Tensor) -> Tensor:
         """Element-wise power operation."""
-        ...
+        return _elementwise_operation(ctx, a, b, operations.BinaryOpType.POW)
 
     @staticmethod
     def backward(ctx: Function, *grad_outputs: Any) -> Any:
+        # Power rule: if y = x^n, then dy/dx = n*x^(n-1)
+        # Not implementing the full gradient for now
         pass
 
 
@@ -96,7 +117,7 @@ class Neg(Function):
     @staticmethod
     def forward(ctx: Function, a: Tensor) -> Tensor:
         """Element-wise negation."""
-        ...
+        return _unary_operation(ctx, a, operations.UnaryOpType.NEG)
 
     @staticmethod
     def backward(ctx: Function, *grad_outputs: Any) -> Any:

@@ -49,7 +49,7 @@ class dtypes:
     # Floating point
     float16: Final[DType] = DType.new(9, 2, "float16", "e")
     float32: Final[DType] = DType.new(10, 4, "float32", "f")
-    float64: Final[DType] = DType.new(11, 8, "double", "d")
+    float64: Final[DType] = DType.new(11, 8, "float64", "d")
 
     # alias
     fp16: Final[DType] = float16

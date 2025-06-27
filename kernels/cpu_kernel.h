@@ -68,6 +68,10 @@ struct Buffer {
   // Constructor taking a Python buffer view
   Buffer(const py::buffer &view, const std::string &dtype);
 
+  // Create a buffer filled with a specified value
+  static Buffer _filled(py::object &val, const std::string &dtype,
+                        std::size_t size);
+
   [[nodiscard]] std::size_t size() const;
 
   // Access to the raw buffer variant

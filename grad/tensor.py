@@ -135,6 +135,31 @@ class Tensor:
 
     # ---- Shape Manipulation Methods ----
 
+    def expand(self, *shape: int) -> Tensor:
+        """Expand the tensor to a larger shape without allocating new memory."""
+        if len(shape) < len(self.shape):
+            raise ValueError(
+                "The expanded shape must have at least as many dimensions as the original shape."
+            )
+
+        new_shape = list(shape)
+        new_stride = [0] * len(new_shape)
+
+        # Align shapes to the right
+        shape_offset = len(new_shape) - len(self.shape)
+
+        for i in range(len(self.shape) - 1, -1, -1):
+            if self.shape[i] == new_shape[i + shape_offset]:
+                new_stride[i + shape_offset] = self._stride[i]
+            elif self.shape[i] == 1:
+                new_stride[i + shape_offset] = 0
+            else:
+                raise ValueError(
+                    f"Cannot expand dimension {i} of size {self.shape[i]} to {new_shape[i + shape_offset]}"
+                )
+
+        return self._create_view(tuple(new_shape), stride=tuple(new_stride))
+
     def view(self, *shape: int) -> Tensor:
         """Return a tensor with the same data but a different shape."""
         shape_tuple = shape[0] if len(shape) == 1 and isinstance(shape[0], tuple) else shape
@@ -224,6 +249,8 @@ class Tensor:
 
     def buffer_id(self) -> int:
         """Returns the memory address of the underlying storage."""
+        if self.storage is None:
+            raise AttributeError("Tensor with data is not initialized yet!")
         return id(self.buffer)
 
     @overload

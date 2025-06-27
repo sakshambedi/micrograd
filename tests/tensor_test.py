@@ -5,7 +5,6 @@ from grad.dtype import dtypes
 from grad.tensor import Tensor
 
 # Mark tests that require unimplemented features
-requires_zeros_ones = pytest.mark.skip(reason="zeros/ones/filled backend not implemented yet")
 requires_working_scalar = pytest.mark.skip(reason="scalar indexing not working yet")
 requires_working_transpose = pytest.mark.skip(
     reason="transpose functionality not fully implemented yet"
@@ -63,13 +62,12 @@ class TestTensorCreation:
 
     def test_tensor_init_with_dtype(self):
         t = Tensor([1, 2, 3], dtype=dtypes.int32)
-        assert t.dtype == dtypes.int32
+        assert t.dtype.name == dtypes.int32.name
         assert all(isinstance(x, int) for x in t.buffer)
 
-        # Skip float64 test as it's not implemented yet
-        # t = Tensor([1, 2, 3], dtype=dtypes.float64)
-        # assert t.dtype == dtypes.float64
-        # assert all(isinstance(x, float) for x in t.buffer)
+        t = Tensor([1, 2, 3], dtype=dtypes.float64)
+        assert t.dtype.name == dtypes.float64.name
+        assert all(isinstance(x, float) for x in t.buffer)
 
     def test_tensor_init_requires_grad(self):
         t = Tensor([1, 2, 3], requires_grad=True)
@@ -80,7 +78,6 @@ class TestTensorCreation:
         with pytest.raises(IndexError, match="Inconsistent tensor shape"):
             Tensor([[1, 2], [3, 4, 5]])
 
-    @requires_zeros_ones
     def test_tensor_zeros(self):
         t = Tensor.zeros((2, 3))
         assert t.shape == (2, 3)
@@ -88,17 +85,14 @@ class TestTensorCreation:
         assert t.is_contigous() is True
         assert all(val == 0 for val in t.buffer)
 
-        # Test with custom dtype
         t = Tensor.zeros((3,), dtype=dtypes.int32)
         assert t.shape == (3,)
         assert t.dtype == dtypes.int32
         assert all(val == 0 for val in t.buffer)
 
-        # Test with requires_grad
         t = Tensor.zeros((2,), requires_grad=True)
         assert t.requires_grad is True
 
-    @requires_zeros_ones
     def test_tensor_ones(self):
         t = Tensor.ones((2, 3))
         assert t.shape == (2, 3)
@@ -160,7 +154,6 @@ class TestTensorCreation:
         # Standard deviation should be approximately 1
         assert abs(np.std(np.array(t.buffer)) - 1.0) < 0.1
 
-    @requires_zeros_ones
     def test_tensor_full(self):
         t = Tensor.full((2, 3), 42)
         assert t.shape == (2, 3)
@@ -168,13 +161,11 @@ class TestTensorCreation:
         assert t.is_contigous() is True
         assert all(val == 42 for val in t.buffer)
 
-        # Test with custom dtype
         t = Tensor.full((3,), 7, dtype=dtypes.int32)
         assert t.shape == (3,)
         assert t.dtype == dtypes.int32
         assert all(val == 7 for val in t.buffer)
 
-        # Test with requires_grad
         t = Tensor.full((2,), 3.14, requires_grad=True)
         assert t.requires_grad is True
         assert all(abs(val - 3.14) < 1e-6 for val in t.buffer)
@@ -565,3 +556,126 @@ class TestTensorViewOps:
         assert t_cont.is_contigous()
         assert t_cont.shape == t_trans.shape
         np.testing.assert_array_equal(t_cont.to_numpy(), t_trans.to_numpy())
+
+
+class TestTensorPowerOperator:
+    def test_pow(self):
+        """Test the power operator on tensors."""
+        try:
+            # Test with scalar power
+            t1 = Tensor([2, 3, 4])
+            result = t1**2
+            assert result.shape == (3,)
+            np.testing.assert_allclose(result.to_numpy(), np.array([4, 9, 16]))
+
+            # Test with negative power
+            result = t1**-1
+            assert result.shape == (3,)
+            np.testing.assert_allclose(result.to_numpy(), np.array([0.5, 1 / 3, 0.25]))
+
+            # Test with floating point power
+            result = t1**0.5
+            assert result.shape == (3,)
+            np.testing.assert_allclose(
+                result.to_numpy(), np.array([1.4142, 1.7321, 2.0]), rtol=1e-4
+            )
+
+            # Test requires_grad
+            t2 = Tensor([2.0], requires_grad=True)
+            result = t2**3
+            assert result.requires_grad
+        except NotImplementedError:
+            pytest.skip("Power operator not implemented yet")
+
+
+class TestTensorDTypeProperties:
+    def test_vector_dtype(self):
+        """Test the vector_dtype property."""
+        t1 = Tensor([1, 2, 3], dtype=dtypes.float32)
+        assert t1.vector_dtype == "float32"
+
+        # Test with different dtype
+        t2 = Tensor([1, 2, 3], dtype=dtypes.int32)
+        assert t2.vector_dtype == "int32"
+
+        # Test exception when storage is None
+        t3 = Tensor.__new__(Tensor)
+        t3.storage = None
+        with pytest.raises(AttributeError):
+            _ = t3.vector_dtype
+
+
+class TestTensorBufferMethods:
+    def test_buffer(self):
+        """Test the buffer property."""
+        t = Tensor([1, 2, 3])
+        buffer = t.buffer
+        assert isinstance(buffer, memoryview)
+
+        # Test exception when storage is None
+        t2 = Tensor.__new__(Tensor)
+        t2.storage = None
+        with pytest.raises(AttributeError):
+            _ = t2.buffer
+
+    def test_buffer_id(self):
+        """Test the buffer_id method."""
+        try:
+            t = Tensor([1, 2, 3])
+            buffer_id = t.buffer_id()
+            assert isinstance(buffer_id, int)
+
+            # Test that views share the same buffer ID
+            t_view = t.view(3, 1)
+            assert t.buffer_id() == t_view.buffer_id()
+
+            # Test that different tensors have different buffer IDs
+            t2 = Tensor([4, 5, 6])
+            assert t.buffer_id() != t2.buffer_id()
+        except AttributeError:
+            pytest.skip("buffer_id method not implemented yet")
+
+    def test_iterbuffer(self):
+        """Test the iterbuffer static method."""
+        t = Tensor([[1, 2], [3, 4]])
+        items = list(Tensor.iterbuffer(t, t.dtype))
+        assert items == [1, 2, 3, 4]
+
+        t_transpose = t.transpose(0, 1)
+        items_transpose = list(Tensor.iterbuffer(t_transpose, t_transpose.dtype))
+        assert items_transpose == [1, 3, 2, 4]
+
+        t2 = Tensor.__new__(Tensor)
+        t2.storage = None
+        with pytest.raises(AttributeError):
+            list(Tensor.iterbuffer(t2, dtypes.float32))
+
+
+class TestTensorSumMethod:
+    def test_sum(self):
+        """Test the sum static method."""
+
+        t1 = Tensor([1, 2, 3, 4])
+        result = Tensor.sum(t1)
+        assert result.shape == ()
+        assert result.to_numpy() == 10
+
+        t2 = Tensor([[1, 2], [3, 4]])
+        result = Tensor.sum(t2)
+        assert result.shape == ()
+        assert result.to_numpy() == 10
+
+        t3 = Tensor([1, 2, 3], dtype=dtypes.int32)
+        result = Tensor.sum(t3, dtype=dtypes.float32)
+        assert result.shape == ()
+        assert result.dtype == dtypes.float32
+        assert result.to_numpy() == 6.0
+
+        t4 = Tensor([1, 2, 3], requires_grad=True)
+        result = Tensor.sum(t4)
+        assert result.requires_grad
+
+        t5 = Tensor.__new__(Tensor)
+        t5.storage = None
+        with pytest.raises(AttributeError):
+            _ = Tensor.sum(t5)

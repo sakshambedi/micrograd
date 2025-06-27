@@ -38,7 +38,6 @@ std::string dtype_to_string(DType t) {
   return "";
 }
 
-// -----------------------------------------------------------------------------
 Buffer::Buffer(std::size_t n, const std::string &dtype) {
   init(n, dtype_from_string(dtype));
 }
@@ -53,6 +52,25 @@ Buffer::Buffer(const py::buffer &view, const std::string &dtype) {
         std::copy(src, src + info.size, buf.data());
       },
       data_);
+}
+
+Buffer Buffer::_filled(py::object &val, const std::string &dtype,
+                       std::size_t size) {
+  Buffer buf(size, dtype);
+  std::visit(
+      [&](auto &b) {
+        using T = std::decay_t<decltype(b[0])>;
+        T v;
+        if constexpr (std::is_same_v<T, half>) {
+          auto tmp = val.cast<float>();
+          v = static_cast<T>(tmp);
+        } else {
+          v = val.cast<T>();
+        }
+        std::fill(b.data(), b.data() + size, v);
+      },
+      buf.raw());
+  return buf;
 }
 
 std::size_t Buffer::size() const {
@@ -264,6 +282,12 @@ PYBIND11_MODULE(cpu_kernel, m) {
       }))
       .def(py::init<std::size_t, const std::string &>())
       .def(py::init<py::buffer, const std::string &>())
+      .def_static(
+          "_filled",
+          [](py::object val, const std::string &dtype, std::size_t size) {
+            ;
+            return Buffer::_filled(val, dtype, size);
+          })
       .def("size", &Buffer::size)
       .def("get_dtype", &Buffer::dtype)
       .def("__repr__", &Buffer::repr)
