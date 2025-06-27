@@ -12,7 +12,7 @@ endif
 
 # Variables
 BUILD_DIR := build
-PYTHON := python3
+PYTHON := python
 CMAKE := cmake
 MAKE := make
 
@@ -160,9 +160,20 @@ setup-env: ## Set up the complete development environment
 	@echo "Development environment setup complete!"
 
 # Python module test
-python-test: build ## Test the Python module
+python-install: ## Install Python Module
+	@echo "Installing Python module..."
+	uv pip install -e .
+	@echo "Python module install completed!"
+
+python-test: python-install ## Test the Python module
 	@echo "Testing Python module..."
 	@PYTHONPATH=$(BUILD_DIR):. $(PYTHON) -c "import cpu_kernel; print('Python module imported successfully!')" || \
 	(cp $(BUILD_DIR)/cpu_kernel*.$(SO_EXT) . 2>/dev/null && PYTHONPATH=. $(PYTHON) -c "import cpu_kernel; print('Python module imported successfully!')")
 	@PYTHONPATH=$(BUILD_DIR):. $(PYTHON) -c "import cpu_kernel; b = cpu_kernel.Buffer([1, 2, 3], 'float32'); print('Buffer created:', b)"
 	@echo "Python module test completed!"
+
+
+precommit: ## Run pre-commit hooks on all files
+	@echo "Running pre-commit hooks on all files..."
+	@pre-commit run --all-files
+	@echo "Pre-commit checks completed successfully!"

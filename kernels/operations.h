@@ -19,10 +19,15 @@ using half = Eigen::half;
 
 namespace simd_ops {
 
-enum class BinaryOpType : std::uint8_t { ADD, SUB, MUL, DIV };
+enum class BinaryOpType : std::uint8_t { ADD, SUB, MUL, DIV, POW };
+
+enum class UnaryOpType : std::uint8_t { NEG };
 
 Buffer binary_op(const Buffer &a, const Buffer &b, BinaryOpType op,
                  const std::string &result_dtype);
+
+Buffer unary_op(const Buffer &a, UnaryOpType op,
+                const std::string &result_dtype);
 
 // Public interface for buffer operations
 // Type trait to check if a type supports SIMD operations
@@ -49,6 +54,11 @@ constexpr bool is_simd_supported_v = is_simd_supported<T>::value;
 Buffer buffer_add(const Buffer &a, const Buffer &b,
                   const std::string &result_dtype);
 
+Buffer buffer_power(const Buffer &a, const Buffer &b,
+                    const std::string &result_dtype);
+
+Buffer buffer_negate(const Buffer &a, const std::string &result_dtype);
+
 // Convenience functions for common operations on raw pointers
 template <typename T>
 void add(const T *lhs, const T *rhs, T *out, std::size_t n) noexcept;
@@ -61,6 +71,11 @@ void multiply(const T *lhs, const T *rhs, T *out, std::size_t n) noexcept;
 
 template <typename T>
 void divide(const T *lhs, const T *rhs, T *out, std::size_t n) noexcept;
+
+template <typename T>
+void power(const T *lhs, const T *rhs, T *out, std::size_t n) noexcept;
+
+template <typename T> void negate(const T *in, T *out, std::size_t n) noexcept;
 
 // Performance information utilities
 template <typename T> constexpr std::size_t simd_width() {

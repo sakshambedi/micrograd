@@ -172,6 +172,8 @@ To build and install the package:
 
     ```bash
     git clone https://github.com/sakshambedi/micrograd.git
+    # or
+    gh repo clone sakshambedi/micrograd
     cd micrograd
     ```
 

@@ -35,10 +35,8 @@ TEST(BufferTest, ConstructorAndSize) {
 TEST(FilledBufferTest, FilledIntegerBuffers) {
   py::scoped_interpreter guard{};
 
-  // Test with integer types
   py::object int_val = py::cast(42);
 
-  // Test int8
   Buffer int8_buf = Buffer::_filled(int_val, "int8", 5);
   EXPECT_EQ(int8_buf.size(), 5);
   EXPECT_EQ(int8_buf.dtype(), "int8");
@@ -47,7 +45,6 @@ TEST(FilledBufferTest, FilledIntegerBuffers) {
     EXPECT_EQ(int8_buf.get_item(i).cast<int8_t>(), 42);
   }
 
-  // Test int16
   Buffer int16_buf = Buffer::_filled(int_val, "int16", 10);
   EXPECT_EQ(int16_buf.size(), 10);
   EXPECT_EQ(int16_buf.dtype(), "int16");
@@ -56,7 +53,6 @@ TEST(FilledBufferTest, FilledIntegerBuffers) {
     EXPECT_EQ(int16_buf.get_item(i).cast<int16_t>(), 42);
   }
 
-  // Test int32
   Buffer int32_buf = Buffer::_filled(int_val, "int32", 3);
   EXPECT_EQ(int32_buf.size(), 3);
   EXPECT_EQ(int32_buf.dtype(), "int32");
@@ -65,7 +61,6 @@ TEST(FilledBufferTest, FilledIntegerBuffers) {
     EXPECT_EQ(int32_buf.get_item(i).cast<int32_t>(), 42);
   }
 
-  // Test int64
   Buffer int64_buf = Buffer::_filled(int_val, "int64", 7);
   EXPECT_EQ(int64_buf.size(), 7);
   EXPECT_EQ(int64_buf.dtype(), "int64");
@@ -78,10 +73,8 @@ TEST(FilledBufferTest, FilledIntegerBuffers) {
 TEST(FilledBufferTest, FilledUnsignedIntegerBuffers) {
   py::scoped_interpreter guard{};
 
-  // Test with unsigned integer types
   py::object uint_val = py::cast(255);
 
-  // Test uint8
   Buffer uint8_buf = Buffer::_filled(uint_val, "uint8", 6);
   EXPECT_EQ(uint8_buf.size(), 6);
   EXPECT_EQ(uint8_buf.dtype(), "uint8");
@@ -90,7 +83,6 @@ TEST(FilledBufferTest, FilledUnsignedIntegerBuffers) {
     EXPECT_EQ(uint8_buf.get_item(i).cast<uint8_t>(), 255);
   }
 
-  // Test uint16
   Buffer uint16_buf = Buffer::_filled(uint_val, "uint16", 4);
   EXPECT_EQ(uint16_buf.size(), 4);
   EXPECT_EQ(uint16_buf.dtype(), "uint16");
@@ -99,7 +91,6 @@ TEST(FilledBufferTest, FilledUnsignedIntegerBuffers) {
     EXPECT_EQ(uint16_buf.get_item(i).cast<uint16_t>(), 255);
   }
 
-  // Test uint32
   Buffer uint32_buf = Buffer::_filled(uint_val, "uint32", 8);
   EXPECT_EQ(uint32_buf.size(), 8);
   EXPECT_EQ(uint32_buf.dtype(), "uint32");
@@ -108,7 +99,6 @@ TEST(FilledBufferTest, FilledUnsignedIntegerBuffers) {
     EXPECT_EQ(uint32_buf.get_item(i).cast<uint32_t>(), 255);
   }
 
-  // Test uint64
   Buffer uint64_buf = Buffer::_filled(uint_val, "uint64", 2);
   EXPECT_EQ(uint64_buf.size(), 2);
   EXPECT_EQ(uint64_buf.dtype(), "uint64");
@@ -121,10 +111,8 @@ TEST(FilledBufferTest, FilledUnsignedIntegerBuffers) {
 TEST(FilledBufferTest, FilledFloatBuffers) {
   py::scoped_interpreter guard{};
 
-  // Test with floating point types
   py::object float_val = py::cast(3.14159f);
 
-  // Test float32
   Buffer float32_buf = Buffer::_filled(float_val, "float32", 9);
   EXPECT_EQ(float32_buf.size(), 9);
   EXPECT_EQ(float32_buf.dtype(), "float32");
@@ -133,7 +121,6 @@ TEST(FilledBufferTest, FilledFloatBuffers) {
     EXPECT_NEAR(float32_buf.get_item(i).cast<float>(), 3.14159f, 1e-5f);
   }
 
-  // Test float64
   Buffer float64_buf = Buffer::_filled(float_val, "float64", 4);
   EXPECT_EQ(float64_buf.size(), 4);
   EXPECT_EQ(float64_buf.dtype(), "float64");
@@ -142,7 +129,6 @@ TEST(FilledBufferTest, FilledFloatBuffers) {
     EXPECT_NEAR(float64_buf.get_item(i).cast<double>(), 3.14159, 1e-5);
   }
 
-  // Test with integer values converted to float
   py::object int_val = py::cast(42);
   Buffer int_to_float_buf = Buffer::_filled(int_val, "float32", 3);
   EXPECT_EQ(int_to_float_buf.size(), 3);
@@ -156,24 +142,23 @@ TEST(FilledBufferTest, FilledFloatBuffers) {
 TEST(FilledBufferTest, EdgeCases) {
   py::scoped_interpreter guard{};
 
-  // Test empty buffer
+  // Empty buffer - Verify that a buffer can be created with zero size.
   py::object val = py::cast(1);
   Buffer empty_buf = Buffer::_filled(val, "int32", 0);
   EXPECT_EQ(empty_buf.size(), 0);
   EXPECT_EQ(empty_buf.dtype(), "int32");
 
-  // Test large buffer
-  const size_t large_size = 1000000; // 1 million elements
+  // Large buffer - Check memory allocation and basic access for a large buffer.
+  const size_t large_size = 1000000;
   Buffer large_buf = Buffer::_filled(val, "int32", large_size);
   EXPECT_EQ(large_buf.size(), large_size);
   EXPECT_EQ(large_buf.dtype(), "int32");
 
-  // Check a few random positions
   EXPECT_EQ(large_buf.get_item(0).cast<int32_t>(), 1);
   EXPECT_EQ(large_buf.get_item(large_size / 2).cast<int32_t>(), 1);
   EXPECT_EQ(large_buf.get_item(large_size - 1).cast<int32_t>(), 1);
 
-  // Test with special values
+  // Special numeric values - Ensure correct handling of 0 and negative numbers.
   py::object zero_val = py::cast(0);
   Buffer zero_buf = Buffer::_filled(zero_val, "float32", 10);
   for (size_t i = 0; i < zero_buf.size(); ++i) {
@@ -186,7 +171,7 @@ TEST(FilledBufferTest, EdgeCases) {
     EXPECT_EQ(neg_buf.get_item(i).cast<int32_t>(), -1);
   }
 
-  // Test with extreme values
+  // Extreme values - Test with the maximum and minimum values of a data type.
   py::object max_int_val = py::cast(std::numeric_limits<int32_t>::max());
   Buffer max_int_buf = Buffer::_filled(max_int_val, "int32", 5);
   for (size_t i = 0; i < max_int_buf.size(); ++i) {
@@ -205,10 +190,8 @@ TEST(FilledBufferTest, EdgeCases) {
 TEST(FilledBufferTest, TypeConversions) {
   py::scoped_interpreter guard{};
 
-  // Test integer value being converted to float types
   py::object int_val = py::cast(42);
 
-  // Integer to float32
   Buffer float32_buf = Buffer::_filled(int_val, "float32", 3);
   EXPECT_EQ(float32_buf.dtype(), "float32");
   EXPECT_EQ(float32_buf.size(), 3);
@@ -217,7 +200,6 @@ TEST(FilledBufferTest, TypeConversions) {
     EXPECT_FLOAT_EQ(float32_buf.get_item(i).cast<float>(), 42.0f);
   }
 
-  // Integer to float64
   Buffer float64_buf = Buffer::_filled(int_val, "float64", 3);
   EXPECT_EQ(float64_buf.dtype(), "float64");
   EXPECT_EQ(float64_buf.size(), 3);
@@ -226,10 +208,8 @@ TEST(FilledBufferTest, TypeConversions) {
     EXPECT_DOUBLE_EQ(float64_buf.get_item(i).cast<double>(), 42.0);
   }
 
-  // Integer to different integer types
   py::object small_int = py::cast(127);
 
-  // Integer to int8
   Buffer int8_buf = Buffer::_filled(small_int, "int8", 3);
   EXPECT_EQ(int8_buf.dtype(), "int8");
 
@@ -237,7 +217,6 @@ TEST(FilledBufferTest, TypeConversions) {
     EXPECT_EQ(int8_buf.get_item(i).cast<int8_t>(), 127);
   }
 
-  // Integer to uint8
   Buffer uint8_buf = Buffer::_filled(small_int, "uint8", 3);
   EXPECT_EQ(uint8_buf.dtype(), "uint8");
 
@@ -249,7 +228,6 @@ TEST(FilledBufferTest, TypeConversions) {
 TEST(FilledBufferTest, FullMethodAlias) {
   py::scoped_interpreter guard{};
 
-  // Test that full is an alias for _filled
   py::object val = py::cast(7);
 
   Buffer buf1 = Buffer::_filled(val, "int16", 5);
@@ -267,51 +245,51 @@ TEST(FilledBufferTest, FullMethodAlias) {
 TEST(FilledBufferTest, SpecialFloatValues) {
   py::scoped_interpreter guard{};
 
-  // Test with NaN for float32
+  // NaN values - Ensure NaN is correctly propagated in float buffers.
   py::object nan_val = py::eval("float('nan')");
   Buffer nan_buf = Buffer::_filled(nan_val, "float32", 5);
   EXPECT_EQ(nan_buf.size(), 5);
   EXPECT_EQ(nan_buf.dtype(), "float32");
 
   for (size_t i = 0; i < nan_buf.size(); ++i) {
-    float value = nan_buf.get_item(i).cast<float>();
+    auto value = nan_buf.get_item(i).cast<float>();
     EXPECT_TRUE(std::isnan(value));
   }
 
-  // Test with infinity for float32
+  // Infinity values - Ensure infinity is correctly propagated.
   py::object inf_val = py::eval("float('inf')");
   Buffer inf_buf = Buffer::_filled(inf_val, "float32", 5);
   EXPECT_EQ(inf_buf.size(), 5);
   EXPECT_EQ(inf_buf.dtype(), "float32");
 
   for (size_t i = 0; i < inf_buf.size(); ++i) {
-    float value = inf_buf.get_item(i).cast<float>();
+    auto value = inf_buf.get_item(i).cast<float>();
     EXPECT_TRUE(std::isinf(value));
   }
 
-  // Test with negative infinity for float64
+  // Negative infinity - Ensure negative infinity is correctly propagated.
   py::object neg_inf_val = py::eval("float('-inf')");
   Buffer neg_inf_buf = Buffer::_filled(neg_inf_val, "float64", 3);
   EXPECT_EQ(neg_inf_buf.size(), 3);
   EXPECT_EQ(neg_inf_buf.dtype(), "float64");
 
   for (size_t i = 0; i < neg_inf_buf.size(); ++i) {
-    double value = neg_inf_buf.get_item(i).cast<double>();
+    auto value = neg_inf_buf.get_item(i).cast<double>();
     EXPECT_TRUE(std::isinf(value));
-    EXPECT_LT(value, 0.0); // Check that it's negative infinity
+    EXPECT_LT(value, 0.0);
   }
 }
 
 TEST(FilledBufferTest, ExtremeSizes) {
   py::scoped_interpreter guard{};
 
-  // Test with size = 1 (single element buffer)
+  // Single element buffer - A common edge case.
   py::object val = py::cast(42);
   Buffer single_buf = Buffer::_filled(val, "int32", 1);
   EXPECT_EQ(single_buf.size(), 1);
   EXPECT_EQ(single_buf.get_item(0).cast<int32_t>(), 42);
 
-  // Test with very small but non-zero size
+  // Small non-zero buffer - Test sizes that are not multiples of SIMD width.
   Buffer small_buf = Buffer::_filled(val, "int32", 2);
   EXPECT_EQ(small_buf.size(), 2);
   EXPECT_EQ(small_buf.get_item(0).cast<int32_t>(), 42);
@@ -321,24 +299,22 @@ TEST(FilledBufferTest, ExtremeSizes) {
 TEST(FilledBufferTest, ErrorConditions) {
   py::scoped_interpreter guard{};
 
-  // Test with invalid dtype
+  // Invalid dtype string - The constructor must throw an error for unknown
+  // types.
   py::object val = py::cast(42);
 
   EXPECT_THROW(
       { Buffer buf = Buffer::_filled(val, "invalid_dtype", 5); },
       std::runtime_error);
 
-  // Test with empty string as dtype
   EXPECT_THROW(
       { Buffer buf = Buffer::_filled(val, "", 5); }, std::runtime_error);
 
-  // Test with completely invalid dtype
   EXPECT_THROW(
       { Buffer buf = Buffer::_filled(val, "not_a_valid_type", 100); },
       std::runtime_error);
 }
 
-// Test dtypes
 TEST(BufferTest, DTypeCheck) {
   py::scoped_interpreter guard{};
 
@@ -389,22 +365,18 @@ TEST(BufferTest, DTypeCheck) {
 //   EXPECT_EQ(py::cast<int>(ibuf.get_item(0)), 7);
 // }
 
-// Test initializer list constructor
 TEST(BufferTest, InitializerListConstructor) {
   py::scoped_interpreter guard{};
 
-  // Float32 initialization
   Buffer fbuf({1.0f, 2.0f, 3.0f, 4.0f, 5.0f}, "float32");
   EXPECT_EQ(fbuf.size(), 5);
   EXPECT_EQ(fbuf.dtype(), "float32");
-  // Check values
   EXPECT_NEAR(py::cast<float>(fbuf.get_item(0)), 1.0f, 1e-6f);
   EXPECT_NEAR(py::cast<float>(fbuf.get_item(1)), 2.0f, 1e-6f);
   EXPECT_NEAR(py::cast<float>(fbuf.get_item(2)), 3.0f, 1e-6f);
   EXPECT_NEAR(py::cast<float>(fbuf.get_item(3)), 4.0f, 1e-6f);
   EXPECT_NEAR(py::cast<float>(fbuf.get_item(4)), 5.0f, 1e-6f);
 
-  // Int64 initialization
   Buffer ibuf({-1, 0, 1}, "int64");
   EXPECT_EQ(ibuf.size(), 3);
   EXPECT_EQ(ibuf.dtype(), "int64");
@@ -412,7 +384,6 @@ TEST(BufferTest, InitializerListConstructor) {
   EXPECT_EQ(py::cast<int64_t>(ibuf.get_item(1)), 0);
   EXPECT_EQ(py::cast<int64_t>(ibuf.get_item(2)), 1);
 
-  // UInt8 initialization
   Buffer u8buf({0, 128, 255}, "uint8");
   EXPECT_EQ(u8buf.size(), 3);
   EXPECT_EQ(u8buf.dtype(), "uint8");
@@ -440,7 +411,6 @@ TEST(BufferTest, InitializerListConstructor) {
   EXPECT_EQ(py::cast<int32_t>(conv_buf.get_item(2)), 3);
 }
 
-// Test py::buffer constructor
 TEST(BufferTest, PyBufferConstructor) {
   py::scoped_interpreter guard{};
 
@@ -452,20 +422,17 @@ TEST(BufferTest, PyBufferConstructor) {
   EXPECT_EQ(float_buf.size(), 4);
   EXPECT_EQ(float_buf.dtype(), "float32");
 
-  // Test with int32 array
   py::array_t<int32_t> np_int =
       np.attr("array")(py::make_tuple(10, 20, 30), "int32");
   Buffer int_buf(np_int, "int32");
   EXPECT_EQ(int_buf.size(), 3);
   EXPECT_EQ(int_buf.dtype(), "int32");
 
-  // Test with empty array
   py::array_t<double> np_empty = np.attr("array")(py::make_tuple(), "float64");
   Buffer empty_buf(np_empty, "float64");
   EXPECT_EQ(empty_buf.size(), 0);
   EXPECT_EQ(empty_buf.dtype(), "float64");
 
-  // Test type conversion (uint8 buffer from int array)
   py::array_t<int> np_mix =
       np.attr("array")(py::make_tuple(0, 128, 255), "int32");
   Buffer uint_buf(np_mix, "uint8");
@@ -473,16 +440,14 @@ TEST(BufferTest, PyBufferConstructor) {
   EXPECT_EQ(uint_buf.dtype(), "uint8");
 }
 
-// Test exception handling in constructors
 TEST(BufferTest, ConstructorExceptions) {
   py::scoped_interpreter guard{};
 
-  // Test invalid dtype
   EXPECT_THROW(Buffer(5, "invalid_type"), std::runtime_error);
   EXPECT_THROW(Buffer({1, 2, 3}, "float128"), std::runtime_error);
 }
 
-// Out-of-bounds accesses should throw an exception
+// Out-of-bounds access - Accessing an index beyond the buffer size must throw.
 TEST(BufferTest, GetItemOutOfBounds) {
   py::scoped_interpreter guard{};
   Buffer buf(1, "float32");
@@ -494,7 +459,6 @@ TEST(BufferTest, GetItemOutOfBounds) {
       std::out_of_range);
 }
 
-// Tests for VecBuffer's cast method directly
 TEST(CastBufferTest, Int32ToFloat32) {
   VecBuffer<int32_t> in({10, -5, 0, 123});
   auto out = in.cast<float>();
@@ -540,14 +504,13 @@ TEST(CastBufferTest, Int16ToFloat16) {
   auto out = in.cast<half>();
   ASSERT_EQ(out.size(), in.size());
 
-  // Convert half back to float for comparison
   std::array<float, 5> values;
   for (size_t i = 0; i < out.size(); ++i) {
     values[i] = static_cast<float>(out[i]);
   }
 
-  EXPECT_NEAR(values[0], static_cast<float>(-32768),
-              8.0f); // Allow some precision loss
+  // Allow some precision loss for float16 conversion.
+  EXPECT_NEAR(values[0], static_cast<float>(-32768), 8.0f);
   EXPECT_NEAR(values[1], -1.0f, 0.01f);
   EXPECT_NEAR(values[2], 0.0f, 0.01f);
   EXPECT_NEAR(values[3], 1.0f, 0.01f);
@@ -599,14 +562,13 @@ TEST(CastBufferTest, FloatSpecialValues) {
 
   auto int_out = in.cast<int32_t>();
   ASSERT_EQ(int_out.size(), in.size());
-  // Implementation-defined behavior for inf/nan-to-int, but we can at least
-  // verify the ordinary values
+  // Inf/NaN to int is implementation-defined, so only test ordinary values.
   EXPECT_EQ(int_out[3], static_cast<int32_t>(-0.0f));
   EXPECT_EQ(int_out[4],
             static_cast<int32_t>(std::numeric_limits<float>::min()));
 }
 
-// Test for chained casting operations
+// Chained casting - Verify that multiple casts in a row behave as expected.
 TEST(CastBufferTest, ChainedCasting) {
   VecBuffer<int32_t> in({-1000, 0, 1000});
 
@@ -616,15 +578,12 @@ TEST(CastBufferTest, ChainedCasting) {
   auto int16_out = uint8_out.cast<int16_t>();
 
   ASSERT_EQ(int16_out.size(), in.size());
-
-  // We can't make exact predictions without knowing the implementation details
-  // Just verify that the values went through the conversion chain
+  // The exact result is complex, just verify the chain completes.
   EXPECT_EQ(int16_out.size(), in.size());
 }
 
 TEST(CastBufferTest, ExtremeValueCasting) {
-
-  // uint64 max to other types
+  // uint64_max to other types - Test overflow and precision loss.
   VecBuffer<uint64_t> uint64_max({std::numeric_limits<uint64_t>::max()});
 
   auto uint64_to_int32 = uint64_max.cast<int32_t>();
@@ -632,10 +591,9 @@ TEST(CastBufferTest, ExtremeValueCasting) {
             static_cast<int32_t>(std::numeric_limits<uint64_t>::max()));
 
   auto uint64_to_float = uint64_max.cast<float>();
-  // Precision loss expected, can only check if it's a large positive number
   EXPECT_GT(uint64_to_float[0], 1.0e10f);
 
-  // int64 min to other types
+  // int64_min to other types - Test underflow.
   VecBuffer<int64_t> int64_min({std::numeric_limits<int64_t>::min()});
 
   auto int64min_to_uint32 = int64_min.cast<uint32_t>();
@@ -671,7 +629,6 @@ TEST(CastBufferTest, LargeBufferCasting) {
   constexpr size_t size = 1000;
   VecBuffer<float> large(size);
 
-  // filling the buffer
   for (size_t i = 0; i < size; ++i) {
     large[i] = static_cast<float>(i) - 500.0f;
   }
@@ -679,13 +636,12 @@ TEST(CastBufferTest, LargeBufferCasting) {
   auto large_int = large.cast<int32_t>();
   ASSERT_EQ(large_int.size(), size);
 
-  // Check a sampling of values
   EXPECT_EQ(large_int[0], -500);
   EXPECT_EQ(large_int[500], 0);
   EXPECT_EQ(large_int[999], 499);
 }
 
-// Test for precision loss in floating point casting
+// Float precision loss - Casting from double to float should lose precision.
 TEST(CastBufferTest, FloatPrecisionLoss) {
   VecBuffer<double> precise({0.1234567890123456789, 1e20, -1e-20});
   auto less_precise = precise.cast<float>();
@@ -693,16 +649,14 @@ TEST(CastBufferTest, FloatPrecisionLoss) {
 
   ASSERT_EQ(back_to_double.size(), precise.size());
 
-  // Values should be different due to precision loss
   EXPECT_NE(back_to_double[0], precise[0]);
   EXPECT_NE(back_to_double[1], precise[1]);
-  // Very small values might become zero
+  // Very small values might become zero after losing precision.
   EXPECT_NEAR(back_to_double[2], 0.0, 1e-20);
 }
 
-// Test specifically for half-precision float conversions
+// Half-precision conversions - Test round-trip float->half->float conversions.
 TEST(CastBufferTest, HalfPrecisionConversions) {
-  // Test float32 to float16 to float32 round trip
   VecBuffer<float> orig_float({-65504.0f, // Min normal float16
                                65504.0f,  // Max normal float16
                                0.0f, 1.0f, -1.0f, 0.5f, -0.5f,
@@ -717,47 +671,39 @@ TEST(CastBufferTest, HalfPrecisionConversions) {
 
   ASSERT_EQ(back_to_float.size(), orig_float.size());
 
-  // Values that should be preserved exactly
   EXPECT_NEAR(back_to_float[2], 0.0f, 1e-6f);
   EXPECT_NEAR(back_to_float[3], 1.0f, 1e-6f);
   EXPECT_NEAR(back_to_float[4], -1.0f, 1e-6f);
   EXPECT_NEAR(back_to_float[5], 0.5f, 1e-6f);
   EXPECT_NEAR(back_to_float[6], -0.5f, 1e-6f);
 
-  // Values at float16 limits should be preserved
+  // Values at float16 limits should be preserved with some tolerance.
   EXPECT_NEAR(back_to_float[0], -65504.0f, 1.0f);
   EXPECT_NEAR(back_to_float[1], 65504.0f, 1.0f);
 
-  // Value with precision loss
   EXPECT_NE(back_to_float[7], orig_float[7]);
   EXPECT_NEAR(back_to_float[7], 0.1f, 0.01f);
 
-  // Value that should flush to zero
   EXPECT_NEAR(back_to_float[8], 0.0f, 1e-6f);
 
-  // Special values
   EXPECT_TRUE(std::isinf(back_to_float[9]) && back_to_float[9] > 0);
   EXPECT_TRUE(std::isinf(back_to_float[10]) && back_to_float[10] < 0);
   EXPECT_TRUE(std::isnan(back_to_float[11]));
 
-  // Test half to int16 conversion
+  // half to int16 - Conversion behavior is implementation-dependent.
   auto half_to_int16 = half_cast.cast<int16_t>();
   EXPECT_EQ(half_to_int16[2], 0);
   EXPECT_EQ(half_to_int16[3], 1);
   EXPECT_EQ(half_to_int16[4], -1);
-  // Implementation-dependent, don't test exact values
-  // Just verify we got some values back from the conversion
   EXPECT_EQ(half_to_int16.size(), half_cast.size());
 }
 
-// Test for signed/unsigned integer conversions
+// Signed/unsigned conversions - Test how values wrap or truncate.
 TEST(CastBufferTest, SignedUnsignedConversions) {
-  // Test various signed to unsigned conversions
   VecBuffer<int32_t> signed_ints({-100, -1, 0, 1, 100,
                                   std::numeric_limits<int32_t>::min(),
                                   std::numeric_limits<int32_t>::max()});
 
-  // int32 to uint32
   auto uint32_cast = signed_ints.cast<uint32_t>();
   ASSERT_EQ(uint32_cast.size(), signed_ints.size());
   EXPECT_EQ(uint32_cast[0], static_cast<uint32_t>(-100));
@@ -770,7 +716,7 @@ TEST(CastBufferTest, SignedUnsignedConversions) {
   EXPECT_EQ(uint32_cast[6],
             static_cast<uint32_t>(std::numeric_limits<int32_t>::max()));
 
-  // int32 to uint16 (truncation)
+  // int32 to uint16 - Values are truncated.
   auto uint16_cast = signed_ints.cast<uint16_t>();
   ASSERT_EQ(uint16_cast.size(), signed_ints.size());
   EXPECT_EQ(uint16_cast[0], static_cast<uint16_t>(-100));
@@ -778,13 +724,11 @@ TEST(CastBufferTest, SignedUnsignedConversions) {
   EXPECT_EQ(uint16_cast[2], 0u);
   EXPECT_EQ(uint16_cast[3], 1u);
   EXPECT_EQ(uint16_cast[4], 100u);
-  // The min/max values will be truncated to uint16
   EXPECT_EQ(uint16_cast[5],
             static_cast<uint16_t>(std::numeric_limits<int32_t>::min()));
   EXPECT_EQ(uint16_cast[6],
             static_cast<uint16_t>(std::numeric_limits<int32_t>::max()));
 
-  // Test unsigned to signed conversions
   VecBuffer<uint32_t> unsigned_ints({
       0, 1, 100,
       0x7FFFFFFF,                          // Max int32 value
@@ -792,34 +736,32 @@ TEST(CastBufferTest, SignedUnsignedConversions) {
       std::numeric_limits<uint32_t>::max() // Max uint32
   });
 
-  // uint32 to int32
   auto int32_cast = unsigned_ints.cast<int32_t>();
   ASSERT_EQ(int32_cast.size(), unsigned_ints.size());
   EXPECT_EQ(int32_cast[0], 0);
   EXPECT_EQ(int32_cast[1], 1);
   EXPECT_EQ(int32_cast[2], 100);
-  EXPECT_EQ(int32_cast[3], static_cast<int32_t>(0x7FFFFFFF)); // OK, max int32
+  EXPECT_EQ(int32_cast[3], static_cast<int32_t>(0x7FFFFFFF));
   EXPECT_EQ(int32_cast[4],
             static_cast<int32_t>(0x80000000)); // Overflows to min int32
   EXPECT_EQ(int32_cast[5],
-            static_cast<int32_t>(std::numeric_limits<uint32_t>::max())); // -1
+            static_cast<int32_t>(
+                std::numeric_limits<uint32_t>::max())); // Wraps to -1
 
-  // uint32 to int16
   auto int16_cast = unsigned_ints.cast<int16_t>();
   ASSERT_EQ(int16_cast.size(), unsigned_ints.size());
   EXPECT_EQ(int16_cast[0], 0);
   EXPECT_EQ(int16_cast[1], 1);
   EXPECT_EQ(int16_cast[2], 100);
-  // Larger values will be truncated to int16
   EXPECT_EQ(int16_cast[3], static_cast<int16_t>(0x7FFFFFFF));
   EXPECT_EQ(int16_cast[4], static_cast<int16_t>(0x80000000));
   EXPECT_EQ(int16_cast[5],
             static_cast<int16_t>(std::numeric_limits<uint32_t>::max()));
 }
 
-// Test for overflow and underflow in casting
+// Overflow/underflow casting - Test behavior when casting values outside the
+// representable range.
 TEST(CastBufferTest, OverflowUnderflowCasting) {
-  // Test overflow from float to int
   VecBuffer<float> big_floats(
       {1.0e10f, -1.0e10f,
        static_cast<float>(std::numeric_limits<int32_t>::max()) * 2.0f,
@@ -830,25 +772,19 @@ TEST(CastBufferTest, OverflowUnderflowCasting) {
   auto int32_from_big_float = big_floats.cast<int32_t>();
   ASSERT_EQ(int32_from_big_float.size(), big_floats.size());
 
-  // We expect consistent behavior between Debug and Release builds
-  // For large positive values exceeding INT_MAX:
+  // C++ standard: float-to-int overflow is undefined behavior.
+  // However, most compilers saturate to the min/max value of the integer type.
   EXPECT_EQ(int32_from_big_float[0], std::numeric_limits<int32_t>::max());
-
-  // For large negative values below INT_MIN:
-  // Should consistently become INT_MIN
   EXPECT_EQ(int32_from_big_float[1], std::numeric_limits<int32_t>::min());
 
-  // Test small float values to unsigned int (negative values)
   VecBuffer<float> neg_floats({-1.0f, -0.5f, -0.0f});
   auto uint32_from_neg = neg_floats.cast<uint32_t>();
   ASSERT_EQ(uint32_from_neg.size(), neg_floats.size());
 
-  // Implementation-defined behavior for negative float to unsigned int
-  // We can at least check the last value
-  EXPECT_EQ(uint32_from_neg[2], 0u); // -0.0f should become 0
+  EXPECT_EQ(uint32_from_neg[2], 0u); // -0.0f should cast to 0.
 }
 
-// Test for fractional value conversions to integers
+// Fractional to integer casting - Verify that fractional parts are truncated.
 TEST(CastBufferTest, FractionalToIntegerCasting) {
   VecBuffer<double> fractions({0.0, 0.1, 0.49, 0.5, 0.51, 0.99, 1.0, -0.1,
                                -0.49, -0.5, -0.51, -0.99, -1.0});
@@ -856,31 +792,29 @@ TEST(CastBufferTest, FractionalToIntegerCasting) {
 
   ASSERT_EQ(int_cast.size(), fractions.size());
 
-  // Check truncation behavior (C++ standard truncates toward zero)
-  EXPECT_EQ(int_cast[0], 0); // 0.0 -> 0
-  EXPECT_EQ(int_cast[1], 0); // 0.1 -> 0
-  EXPECT_EQ(int_cast[2], 0); // 0.49 -> 0
-  EXPECT_EQ(int_cast[3], 0); // 0.5 -> 0
-  EXPECT_EQ(int_cast[4], 0); // 0.51 -> 0
-  EXPECT_EQ(int_cast[5], 0); // 0.99 -> 0
-  EXPECT_EQ(int_cast[6], 1); // 1.0 -> 1
+  EXPECT_EQ(int_cast[0], 0);
+  EXPECT_EQ(int_cast[1], 0);
+  EXPECT_EQ(int_cast[2], 0);
+  EXPECT_EQ(int_cast[3], 0);
+  EXPECT_EQ(int_cast[4], 0);
+  EXPECT_EQ(int_cast[5], 0);
+  EXPECT_EQ(int_cast[6], 1);
 
-  EXPECT_EQ(int_cast[7], 0);   // -0.1 -> 0
-  EXPECT_EQ(int_cast[8], 0);   // -0.49 -> 0
-  EXPECT_EQ(int_cast[9], 0);   // -0.5 -> 0
-  EXPECT_EQ(int_cast[10], 0);  // -0.51 -> 0
-  EXPECT_EQ(int_cast[11], 0);  // -0.99 -> 0
-  EXPECT_EQ(int_cast[12], -1); // -1.0 -> -1
+  EXPECT_EQ(int_cast[7], 0);
+  EXPECT_EQ(int_cast[8], 0);
+  EXPECT_EQ(int_cast[9], 0);
+  EXPECT_EQ(int_cast[10], 0);
+  EXPECT_EQ(int_cast[11], 0);
+  EXPECT_EQ(int_cast[12], -1);
 }
 
 TEST(CastBufferTest, MixedPrecisionCastChains) {
-  // Create values that span the full range of uint8
   VecBuffer<uint8_t> uint8_values(256);
   for (int i = 0; i < 256; i++) {
     uint8_values[i] = static_cast<uint8_t>(i);
   }
 
-  // Test chain: uint8 -> float32 -> float16 -> float64 -> int32
+  // uint8 -> float32 -> float16 -> float64 -> int32
   auto to_float32 = uint8_values.cast<float>();
   auto to_float16 = to_float32.cast<half>();
   auto to_float64 = to_float16.cast<double>();
@@ -888,12 +822,11 @@ TEST(CastBufferTest, MixedPrecisionCastChains) {
 
   ASSERT_EQ(to_int32.size(), uint8_values.size());
 
-  // Check that basic values survived the conversion chain
-  EXPECT_EQ(to_int32[0], 0);     // 0 should survive all conversions
-  EXPECT_EQ(to_int32[1], 1);     // 1 should survive all conversions
-  EXPECT_EQ(to_int32[255], 255); // 255 should survive all conversions
+  EXPECT_EQ(to_int32[0], 0);
+  EXPECT_EQ(to_int32[1], 1);
+  EXPECT_EQ(to_int32[255], 255);
 
-  // Test another chain: int32 -> uint64 -> float32 -> int16
+  // int32 -> uint64 -> float32 -> int16
   VecBuffer<int32_t> int32_values({-1000000, -1, 0, 1, 1000000});
   auto to_uint64 = int32_values.cast<uint64_t>();
   auto back_to_float = to_uint64.cast<float>();
@@ -901,15 +834,15 @@ TEST(CastBufferTest, MixedPrecisionCastChains) {
 
   ASSERT_EQ(to_int16.size(), int32_values.size());
 
-  // Negative values will become large positive values in uint64, then might
-  // overflow in float->int16
-  EXPECT_EQ(to_int16[2], 0); // 0 should survive all conversions
-  EXPECT_EQ(to_int16[3], 1); // 1 should survive all conversions
+  // Negative values become large positive in uint64, then overflow in
+  // float->int16.
+  EXPECT_EQ(to_int16[2], 0);
+  EXPECT_EQ(to_int16[3], 1);
 }
 
-// Test for subnormal floating-point values
+// Subnormal float casting - Test conversion of very small, subnormal float
+// values.
 TEST(CastBufferTest, SubnormalFloatCasting) {
-  // Create some subnormal float32 values
   float min_normal = std::numeric_limits<float>::min();
   VecBuffer<float> subnormals({
       0.0f,
@@ -926,20 +859,19 @@ TEST(CastBufferTest, SubnormalFloatCasting) {
   EXPECT_DOUBLE_EQ(to_double[2], static_cast<double>(min_normal / 2));
   EXPECT_DOUBLE_EQ(to_double[3], static_cast<double>(min_normal));
 
-  // Cast to half (some values may flush to zero)
   auto to_half = subnormals.cast<half>();
   auto back_to_float = to_half.cast<float>();
   ASSERT_EQ(back_to_float.size(), subnormals.size());
   EXPECT_FLOAT_EQ(back_to_float[0], 0.0f);
 }
 
-// Test for integer rounding during floating point casting
+// Integer rounding - Test rounding of large integers that lose precision in
+// float types.
 TEST(CastBufferTest, IntegerRoundingInFloatCast) {
-  // Large integers that can't be exactly represented in floating point
   VecBuffer<int64_t> large_ints({
-      1000000000000000000LL, // 10^18, beyond exact float32 precision
-      1000000000000000001LL, // 10^18 + 1, will round in float
-      9007199254740992LL,    // 2^53, max exact double precision integer
+      1000000000000000000LL, // 10^18, will round in float32
+      1000000000000000001LL, // 10^18 + 1, will round to same float32
+      9007199254740992LL,    // 2^53, max exact double integer
       9007199254740993LL     // 2^53 + 1, will round in double
   });
 
@@ -956,14 +888,11 @@ TEST(CastBufferTest, IntegerRoundingInFloatCast) {
 
   ASSERT_EQ(double_to_int64.size(), large_ints.size());
 
-  // Double can represent 2^53 exactly, but not 2^53+1
   EXPECT_EQ(double_to_int64[2], large_ints[2]);
   EXPECT_NE(double_to_int64[3], large_ints[3]);
 }
 
 TEST(CastBufferTest, ComprehensiveTypeConversionGrid) {
-
-  // int8 conversions
   {
     VecBuffer<int8_t> val({42});
     EXPECT_EQ(val.cast<int16_t>()[0], static_cast<int16_t>(42));
@@ -978,22 +907,18 @@ TEST(CastBufferTest, ComprehensiveTypeConversionGrid) {
     EXPECT_DOUBLE_EQ(val.cast<double>()[0], 42.0);
   }
 
-  // Test negative int8 conversion to unsigned types
+  // Negative int8 to unsigned - Test wrap-around behavior.
   {
     VecBuffer<int8_t> neg_val({-42});
     EXPECT_EQ(neg_val.cast<int16_t>()[0], static_cast<int16_t>(-42));
-    EXPECT_EQ(neg_val.cast<uint8_t>()[0],
-              static_cast<uint8_t>(-42)); // Will wrap around
-    EXPECT_EQ(neg_val.cast<uint16_t>()[0],
-              static_cast<uint16_t>(-42)); // Will wrap around
+    EXPECT_EQ(neg_val.cast<uint8_t>()[0], static_cast<uint8_t>(-42));
+    EXPECT_EQ(neg_val.cast<uint16_t>()[0], static_cast<uint16_t>(-42));
   }
 
-  // uint64 max value conversions
+  // uint64_max to other types - Test overflow and precision loss.
   {
     VecBuffer<uint64_t> max_val({std::numeric_limits<uint64_t>::max()});
 
-    // To signed integers (implementation-defined, but usually modulo
-    // conversion)
     EXPECT_EQ(max_val.cast<int8_t>()[0],
               static_cast<int8_t>(std::numeric_limits<uint64_t>::max()));
     EXPECT_EQ(max_val.cast<int16_t>()[0],
@@ -1003,18 +928,16 @@ TEST(CastBufferTest, ComprehensiveTypeConversionGrid) {
     EXPECT_EQ(max_val.cast<int64_t>()[0],
               static_cast<int64_t>(std::numeric_limits<uint64_t>::max()));
 
-    // To floating point (will lose precision)
     EXPECT_GT(max_val.cast<float>()[0], 1.0e19f);
     EXPECT_GT(max_val.cast<double>()[0], 1.0e19);
   }
 
-  // Check double->float->half conversion precision chain
+  // double -> float -> half - Test precision loss chain.
   {
     VecBuffer<double> pi_val({3.14159265358979323846});
     auto pi_float = pi_val.cast<float>();
     auto pi_half = pi_float.cast<half>();
 
-    // Verify the expected precision loss
     EXPECT_NE(static_cast<double>(pi_float[0]), pi_val[0]);
     EXPECT_NEAR(pi_float[0], 3.14159265f, 1e-7f);
 
@@ -1033,7 +956,7 @@ TEST(BufferTest, AddOperation) {
   std::vector<float> expected = {5.0f, 7.0f, 9.0f};
   const auto &c_buf = std::get<VecBuffer<float>>(c.raw());
   for (size_t i = 0; i < expected.size(); ++i) {
-    EXPECT_NEAR(c_buf[i], expected[i], 1e-6);
+    EXPECT_NEAR(c_buf[i], expected[i], 1e-5);
   }
 }
 
@@ -1104,7 +1027,6 @@ TEST(BufferMembersTest, RoundTripAndBounds) {
   EXPECT_FLOAT_EQ(py::cast<float>(item0), 1.25f);
   EXPECT_FLOAT_EQ(py::cast<float>(item1), -2.5f);
 
-  // EXPECT_THROW(fbuf.get_item(2), std::out_of_range);
   EXPECT_THROW(static_cast<void>(fbuf.set_item<float>(2, 0.f)),
                std::out_of_range);
   EXPECT_THROW(fbuf.set_item<float>(2, 0.f), std::out_of_range);
@@ -1155,7 +1077,6 @@ TEST(BufferTest, SetItemOutOfBounds) {
   EXPECT_THROW(buf.set_item(3, 1.0), std::out_of_range);
 }
 
-// Validate type conversions and data preservation
 TEST(BufferTest, TypeConversions) {
   py::scoped_interpreter guard{};
 

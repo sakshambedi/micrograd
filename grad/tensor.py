@@ -224,6 +224,8 @@ class Tensor:
 
     def buffer_id(self) -> int:
         """Returns the memory address of the underlying storage."""
+        if self.storage is None:
+            raise AttributeError("Tensor with data is not initialized yet!")
         return id(self.buffer)
 
     @overload

@@ -38,7 +38,6 @@ std::string dtype_to_string(DType t) {
   return "";
 }
 
-// -----------------------------------------------------------------------------
 Buffer::Buffer(std::size_t n, const std::string &dtype) {
   init(n, dtype_from_string(dtype));
 }
@@ -65,19 +64,9 @@ Buffer Buffer::_filled(py::object &val, const std::string &dtype,
         if constexpr (std::is_same_v<T, half>) {
           auto tmp = val.cast<float>();
           v = static_cast<T>(tmp);
+        } else {
+          v = val.cast<T>();
         }
-        v = val.cast<T>();
-        // else if constexpr (std::is_integral_v<T>) {
-        //   try {
-        //     v = val.cast<T>();
-        //   } catch (const py::cast_error &) {
-        //     auto tmp = val.cast<double>();
-        //     v = static_cast<T>(tmp);
-        //   }
-        // } else {
-
-        //   v = val.cast<T>();
-        // }
         std::fill(b.data(), b.data() + size, v);
       },
       buf.raw());
@@ -299,8 +288,6 @@ PYBIND11_MODULE(cpu_kernel, m) {
             ;
             return Buffer::_filled(val, dtype, size);
           })
-
-      .def_static("full", &Buffer::_filled)
       .def("size", &Buffer::size)
       .def("get_dtype", &Buffer::dtype)
       .def("__repr__", &Buffer::repr)

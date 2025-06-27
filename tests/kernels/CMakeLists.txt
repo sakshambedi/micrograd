@@ -13,17 +13,17 @@ target_compile_options(test_cpu_kernel PRIVATE
 gtest_discover_tests(test_cpu_kernel)
 
 # Build Binary Operations tests
-add_executable(test_binary_operations test_binary_operations.cpp)
-target_include_directories(test_binary_operations PRIVATE
+add_executable(test_operations test_operations.cpp)
+target_include_directories(test_operations PRIVATE
                             ${pybind11_SOURCE_DIR}/include
                             ${Python3_INCLUDE_DIRS}
                             ${XSIMD_INCLUDE_DIR})
-target_link_libraries(test_binary_operations gtest_main
+target_link_libraries(test_operations gtest_main
                     cpu_kernel_lib ${Python3_LIBRARIES})
 # Ensure IEEE 754 compliance and consistent float-to-integer casting behavior
-target_compile_options(test_binary_operations PRIVATE
+target_compile_options(test_operations PRIVATE
     -fno-fast-math -ffp-contract=on -fno-rounding-math -ftrapping-math)
-gtest_discover_tests(test_binary_operations)
+gtest_discover_tests(test_operations)
 
 # Build VecBuffer tests
 add_executable(test_vecbuffer test_vecbuffer.cpp)
