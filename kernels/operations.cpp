@@ -298,16 +298,15 @@ void unary_kernel(const T *__restrict__ in, T *__restrict__ out,
     std::size_t i = 0;
     const std::size_t simd_end = batch_size > 0 ? n - (n % batch_size) : 0;
 
-    // Check alignment and choose appropriate load/store strategy
     if (is_aligned<T>(in) && is_aligned<T>(out)) {
-      // Main SIMD loop with aligned memory access
+
       for (; i < simd_end; i += batch_size) {
         auto a_batch = batch_type::load_aligned(&in[i]);
         auto result = Op::apply_simd(a_batch);
         result.store_aligned(&out[i]);
       }
     } else {
-      // Main SIMD loop with unaligned memory access
+
       for (; i < simd_end; i += batch_size) {
         auto a_batch = batch_type::load_unaligned(&in[i]);
         auto result = Op::apply_simd(a_batch);
@@ -315,7 +314,6 @@ void unary_kernel(const T *__restrict__ in, T *__restrict__ out,
       }
     }
 
-    // Handle remaining elements with scalar operations
     for (; i < n; ++i) {
       out[i] = Op::apply_scalar(in[i]);
     }
@@ -546,6 +544,7 @@ INSTANTIATE_UNARY_KERNEL(int32_t, NegOp)
 INSTANTIATE_UNARY_KERNEL(int64_t, NegOp)
 
 } // namespace simd_ops
+
 PYBIND11_MODULE(operations, m) {
   py::enum_<simd_ops::BinaryOpType>(m, "BinaryOpType")
       .value("ADD", simd_ops::BinaryOpType::ADD)
@@ -553,9 +552,9 @@ PYBIND11_MODULE(operations, m) {
       .value("MUL", simd_ops::BinaryOpType::MUL)
       .value("DIV", simd_ops::BinaryOpType::DIV)
       .value("POW", simd_ops::BinaryOpType::POW);
-
   py::enum_<simd_ops::UnaryOpType>(m, "UnaryOpType")
       .value("NEG", simd_ops::UnaryOpType::NEG);
+  // .value("SUB", simd_ops::UnaryOpType::POW);
 
   m.def("binary_op", &simd_ops::binary_op,
         "Generic binary operation on two buffers", py::arg("a"), py::arg("b"),
