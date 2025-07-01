@@ -3,6 +3,8 @@ import pytest
 
 from grad.tensor import Tensor
 
+requires_broadcasting_support = pytest.mark.skip(reason="scalar indexing not working yet")
+
 
 class TestAddition:
     @pytest.mark.parametrize(
@@ -31,25 +33,40 @@ class TestAddition:
         expected = np.array([[11, 22, 33], [44, 55, 66]])
         np.testing.assert_array_equal(out.to_numpy(), expected)
 
-    # def test_broadcast_add(self):
-    #     t0 = Tensor.ones((3, 1))
-    #     t1 = Tensor.arange(3)
-    #     out = t0 + t1
-    #     expected = np.ones((3, 1)) + np.arange(3)
-    #     np.testing.assert_array_equal(out.to_numpy(), expected)
+    @requires_broadcasting_support
+    def test_broadcast_add(self):
+        t0 = Tensor.ones((3, 1))
+        t1 = Tensor.arange(3)
+        out = t0 + t1
+        expected = np.ones((3, 1)) + np.arange(3)
+        np.testing.assert_array_equal(out.to_numpy(), expected)
 
-    # def test_broadcast_add_mismatched(self):
-    #     t0 = Tensor.ones((2, 3))
-    #     t1 = Tensor.arange(3)
-    #     out = t0 + t1
-    #     expected = np.ones((2, 3)) + np.arange(3)
-    #     np.testing.assert_array_equal(out.to_numpy(), expected)
+    @requires_broadcasting_support
+    def test_broadcast_add_mismatched(self):
+        t0 = Tensor.ones((2, 3))
+        t1 = Tensor.arange(3)
+        out = t0 + t1
+        expected = np.ones((2, 3)) + np.arange(3)
+        np.testing.assert_array_equal(out.to_numpy(), expected)
 
     def test_add_shape_mismatch(self):
         t0 = Tensor([1, 2, 3])
         t1 = Tensor([[1, 2], [3, 4]])
         with pytest.raises(ValueError, match="not broadcast-compatible"):
             _ = t0 + t1
+
+    @requires_broadcasting_support
+    def test_add_scalar(self):
+        t = Tensor([1, 2, 3])
+        result = t + 2
+        assert result.shape == (3,)
+        np.testing.assert_array_equal(result.to_numpy(), np.array([3, 4, 5]))
+
+    def test_add_requires_grad(self):
+        t1 = Tensor([1, 2, 3], requires_grad=True)
+        t2 = Tensor([4, 5, 6])
+        result = t1 + t2
+        assert result.requires_grad is True
 
 
 class TestSubtraction:
@@ -82,6 +99,19 @@ class TestSubtraction:
         t1 = Tensor([[1, 2], [3, 4]])
         with pytest.raises(ValueError, match="not broadcast-compatible"):
             _ = t0 - t1
+
+    @requires_broadcasting_support
+    def test_sub_scalar(self):
+        t = Tensor([4, 5, 6])
+        result = t - 2
+        assert result.shape == (3,)
+        np.testing.assert_array_equal(result.to_numpy(), np.array([2, 3, 4]))
+
+    def test_sub_requires_grad(self):
+        t1 = Tensor([1, 2, 3], requires_grad=True)
+        t2 = Tensor([4, 5, 6])
+        result = t1 - t2
+        assert result.requires_grad is True
 
 
 class TestMultiplication:
@@ -123,6 +153,19 @@ class TestMultiplication:
         with pytest.raises(ValueError, match="not broadcast-compatible"):
             _ = t0 * t1
 
+    @requires_broadcasting_support
+    def test_mul_scalar(self):
+        t = Tensor([1, 2, 3])
+        result = t * 2
+        assert result.shape == (3,)
+        np.testing.assert_array_equal(result.to_numpy(), np.array([2, 4, 6]))
+
+    def test_mul_requires_grad(self):
+        t1 = Tensor([1, 2, 3], requires_grad=True)
+        t2 = Tensor([4, 5, 6])
+        result = t1 * t2
+        assert result.requires_grad is True
+
 
 class TestDivision:
     @pytest.mark.parametrize(
@@ -161,6 +204,19 @@ class TestDivision:
         t1 = Tensor([[1, 2], [3, 4]])
         with pytest.raises(ValueError, match="not broadcast-compatible"):
             _ = t0 / t1
+
+    @requires_broadcasting_support
+    def test_div_scalar(self):
+        t = Tensor([4, 10, 18])
+        result = t / 2
+        assert result.shape == (3,)
+        np.testing.assert_array_equal(result.to_numpy(), np.array([2.0, 5.0, 9.0]))
+
+    def test_div_requires_grad(self):
+        t1 = Tensor([4, 10, 18], requires_grad=True)
+        t2 = Tensor([2, 5, 6])
+        result = t1 / t2
+        assert result.requires_grad is True
 
 
 class TestPower:
@@ -206,14 +262,39 @@ class TestPower:
         expected = np.array([4, -27])
         np.testing.assert_array_equal(out.to_numpy(), expected)
 
-    # no support for broadcast right now
-    # def test_pow_shape_mismatch(self):
-    #     t0 = Tensor([1, 2, 3])
-    #     t1 = Tensor([[1, 2], [3, 4]])
-    #     with pytest.raises(
-    #         ValueError, match="operands could not be broadcast together with shapes"
-    #     ):
-    #         _ = t0**t1
+    def test_pow_negative_exponent(self):
+        t = Tensor([2, 4, 8])
+        result = t**-1
+        expected = np.array([0.5, 0.25, 0.125])
+        np.testing.assert_array_almost_equal(result.to_numpy(), expected, decimal=6)
+
+    def test_pow_float_exponent(self):
+        t = Tensor([4, 9, 16])
+        result = t**0.5
+        expected = np.array([2.0, 3.0, 4.0])
+        np.testing.assert_array_almost_equal(result.to_numpy(), expected, decimal=6)
+
+    def test_pow_requires_grad(self):
+        t1 = Tensor([2.0, 3.0], requires_grad=True)
+        t2 = Tensor([3, 2])
+        result = t1**t2
+        assert result.requires_grad is True
+
+    @requires_broadcasting_support
+    def test_pow_shape_mismatch(self):
+        t0 = Tensor([1, 2, 3])
+        t1 = Tensor([[1, 2], [3, 4]])
+        with pytest.raises(
+            ValueError, match="operands could not be broadcast together with shapes"
+        ):
+            _ = t0**t1
+
+    @requires_broadcasting_support
+    def test_pow_scalar(self):
+        t = Tensor([2, 3, 4])
+        result = t**2
+        assert result.shape == (3,)
+        np.testing.assert_array_equal(result.to_numpy(), np.array([4, 9, 16]))
 
 
 class TestNegation:
@@ -274,3 +355,8 @@ class TestNegation:
         result = -t
         expected = np.array([-1e6, 1e6, -1e-6, 1e-6])
         np.testing.assert_array_almost_equal(result.to_numpy(), expected, decimal=10)
+
+    def test_neg_requires_grad(self):
+        t = Tensor([1, -2, 3], requires_grad=True)
+        result = -t
+        assert result.requires_grad is True

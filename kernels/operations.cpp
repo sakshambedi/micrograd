@@ -156,7 +156,6 @@ struct NegOp {
 };
 
 // Core SIMD binary operation kernel - fully optimized for performance
-
 template <typename T, typename Op, bool Aligned>
 void binary_kernel_impl(const T *__restrict__ lhs, const T *__restrict__ rhs,
                         T *__restrict__ out, std::size_t n) noexcept {
@@ -556,8 +555,8 @@ PYBIND11_MODULE(operations, m) {
       .value("DIV", simd_ops::BinaryOpType::DIV)
       .value("POW", simd_ops::BinaryOpType::POW);
   py::enum_<simd_ops::UnaryOpType>(m, "UnaryOpType")
-      .value("NEG", simd_ops::UnaryOpType::NEG);
-  // .value("SUB", simd_ops::UnaryOpType::POW);
+      .value("NEG", simd_ops::UnaryOpType::NEG)
+      .value("POW", simd_ops::UnaryOpType::POW);
 
   m.def("binary_op", &simd_ops::binary_op,
         "Generic binary operation on two buffers", py::arg("a"), py::arg("b"),

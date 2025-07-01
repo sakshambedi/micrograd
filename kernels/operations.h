@@ -21,7 +21,7 @@ namespace simd_ops {
 
 enum class BinaryOpType : std::uint8_t { ADD, SUB, MUL, DIV, POW };
 
-enum class UnaryOpType : std::uint8_t { NEG };
+enum class UnaryOpType : std::uint8_t { NEG, POW };
 
 Buffer binary_op(const Buffer &a, const Buffer &b, BinaryOpType op,
                  const std::string &result_dtype);

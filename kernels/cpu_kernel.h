@@ -87,10 +87,11 @@ struct Buffer {
 
   // Get item at the specified index
   [[nodiscard]] py::object get_item(size_t index) const;
-  [[nodiscard]] py::object set_item(size_t index, py::object val) const;
+  // py::object set_item(size_t index, py::object value);
+  void set_item(size_t index, py::object value);
 
   // Set item at the specified index
-  template <typename T> void set_item(size_t index, T value);
+  template <typename T> void set_item_typed(size_t index, T value);
 
   // Cast the buffer to a different data type
   [[nodiscard]] Buffer cast(const std::string &new_dtype) const;
@@ -101,7 +102,8 @@ private:
   DType dtype_;
 };
 
-template <typename T> inline void Buffer::set_item(size_t index, T value) {
+template <typename T>
+inline void Buffer::set_item_typed(size_t index, T value) {
   if (index >= size()) {
     throw std::out_of_range("Buffer index out of range");
   }

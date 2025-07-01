@@ -52,10 +52,10 @@ class TestBuffer:
         assert b[1] == 2.0
         assert b[2] == 3.0
 
-        # Skip item assignment test as C++ implementation doesn't support it
-        # b[1] = 5.0
-        # assert b[1] == 5.0
-        # assert b.to_list() == [1.0, 5.0, 3.0]
+        # Test item assignment now that C++ implementation supports it
+        b[1] = 5.0
+        assert b[1] == 5.0
+        assert b.to_list() == [1.0, 5.0, 3.0]
 
         with pytest.raises(IndexError):
             b[3]  # Out of bounds
@@ -137,13 +137,12 @@ class TestBuffer:
         assert shared.to_list() == [1.0, 2.0, 3.0]
         assert b.shares_storage_with(shared)
 
-        # Since current implementation doesn't actually support mutating the buffer through __setitem__
-        # we'll skip this test. The C++ implementation likely doesn't support this operation.
-        # shared[0] = 10.0
-        # assert b[0] == 10.0
+        # Test mutating the buffer through __setitem__ now that it's supported
+        shared[0] = 10.0
+        assert b[0] == 10.0
 
         clone = b.clone()
         assert not clone.shares_storage_with(b)
-        # Skip testing mutation since __setitem__ doesn't work as expected
-        # clone[1] = -5.0
-        # assert b[1] != -5.0
+        # Test mutation on clone - should not affect original
+        clone[1] = -5.0
+        assert b[1] != -5.0

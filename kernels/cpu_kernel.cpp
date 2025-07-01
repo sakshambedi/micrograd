@@ -251,7 +251,7 @@ py::object Buffer::get_item(size_t index) const {
       data_);
 }
 
-py::object Buffer::set_item(size_t index, py::object val) const {
+void Buffer::set_item(size_t index, py::object value) {
   if (index >= size()) {
     throw std::out_of_range("Buffer index out of range");
   }
@@ -259,13 +259,12 @@ py::object Buffer::set_item(size_t index, py::object val) const {
   std::visit(
       [&](auto &b) {
         using DestType = std::decay_t<decltype(b[0])>;
-        const_cast<DestType &>(b[index]) = val.cast<DestType>();
+        // modify underlying buffer
+        const_cast<DestType &>(b[index]) = value.cast<DestType>();
       },
-      const_cast<BufferVariant &>(data_));
-  return val;
+      data_);
 }
 
-// -----------------------------------------------------------------------------
 PYBIND11_MODULE(cpu_kernel, m) {
   py::class_<Buffer>(m, "Buffer")
       .def(py::init([](py::list l, const std::string &dtype) {
@@ -285,7 +284,6 @@ PYBIND11_MODULE(cpu_kernel, m) {
       .def_static(
           "_filled",
           [](py::object val, const std::string &dtype, std::size_t size) {
-            ;
             return Buffer::_filled(val, dtype, size);
           })
       .def("size", &Buffer::size)
@@ -293,6 +291,9 @@ PYBIND11_MODULE(cpu_kernel, m) {
       .def("__repr__", &Buffer::repr)
       .def("__getitem__", &Buffer::get_item)
       .def("get_item", &Buffer::get_item)
+      .def("__setitem__", [](Buffer &buf, size_t index,
+                             py::object &value) { buf.set_item(index, value); })
+      .def("set_item", &Buffer::set_item)
       .def("cast", &Buffer::cast)
       .def_property_readonly("__array_interface__", &Buffer::array_interface);
 }
